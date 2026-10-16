@@ -1,0 +1,273 @@
+
+
+//input
+
+input, textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &.p-inputtext {
+    @apply border border-solid border-line rounded bg-white text-black text-sm font-normal;
+    height: 40px;
+    padding: 0.5rem 0.625rem;
+    line-height: 1.6;
+    box-shadow: none;
+
+    &:disabled,
+    &.p-disabled {
+      @apply bg-gray-300 border-line text-neural-300;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    &:enabled:hover:not(.p-disabled),
+    &:hover {
+      border-color: theme('colors.primary.300') !important;
+    }
+
+    &:enabled:focus:not(.p-disabled),
+    &:focus {
+      border-color: theme('colors.primary.700') !important;
+      box-shadow: none !important;
+      outline: none;
+    }
+
+    &::placeholder {
+      font-size: 14px !important;
+      color: #9CA3AF;
+    }
+  }
+
+  &.is-invalid:focus,
+  &.is-invalid:hover {
+    border-color: theme('colors.errors.100') !important;
+    caret-color: theme('colors.errors.100') !important;
+  }
+
+}
+
+
+.show-password-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+html[dir='ltr'] {
+  .show-password-icon {
+    right: calc(0.375em + 0.1875rem);
+  }
+
+  input, textarea {
+    background-position: left calc(0.375em + 0.1875rem) center;
+
+    &.is-invalid {
+      border-color: theme('colors.errors.100') !important;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3E%3Ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3E%3C/svg%3E") !important;
+      padding-left: calc(1.5em + 0.75rem) !important;
+      background-repeat: no-repeat !important;
+      background-position: left calc(0.375em + 0.1875rem) center !important;
+      background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+    }
+
+    &.password-input {
+      padding-right: calc(1.5rem + 24px) !important;
+    }
+  }
+
+}
+html[dir='rtl'] {
+  .show-password-icon {
+    right: calc(0.375em + 0.1875rem);
+  }
+
+  input, textarea {
+    background-position: right calc(0.375em + 0.1875rem) center;
+
+    &.is-invalid {
+      border-color: theme('colors.errors.100') !important;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3E%3Ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3E%3C/svg%3E") !important;
+      padding-right: calc(1.5em + 0.75rem) !important;
+      background-repeat: no-repeat !important;
+      background-position: right calc(0.375em + 0.1875rem) center !important;
+      background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+    }
+
+    &.password-input {
+      padding-left: calc(1.5rem + 24px) !important;
+    }
+  }
+
+}
+
+input[type='tel'] {
+  @apply rtl:text-right
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+//toggle switch
+.p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider {
+  background: theme('colors.primary.700') !important;
+}
+
+//Select box
+.p-select .p-select-label,
+.p-multiselect .p-multiselect-label {
+  @apply text-black font-normal text-sm flex items-center;
+  padding: 0 0.625rem;
+}
+
+.p-select-label.p-placeholder,
+.p-multiselect-label.p-placeholder,
+.p-select .p-select-label .p-placeholder,
+.p-select .p-multiselect-label .p-placeholder {
+  @apply font-normal text-sm;
+  color: #9CA3AF !important;
+}
+
+.p-select, .p-multiselect {
+  @apply border border-solid rounded bg-white !border-line text-black;
+  min-height: 40px;
+  box-shadow: none !important;
+}
+
+.p-select.is-invalid, .p-multiselect.is-invalid {
+  border-color: theme('colors.errors.100') !important;
+}
+
+.p-select:not(.p-disabled):hover,
+.p-multiselect:not(.p-disabled):hover {
+  border-color: theme('colors.primary.300') !important;
+}
+
+.p-select:not(.p-disabled).p-focus,
+.p-multiselect:not(.p-disabled).p-focus {
+  border-color: theme('colors.primary.700') !important;
+}
+
+.p-select.p-disabled, .p-multiselect.p-disabled {
+  @apply bg-gray-300;
+}
+
+.p-select:not(.p-paginator-rpp-dropdown), .p-multiselect {
+  min-width: 230px !important;
+}
+
+.p-select-overlay, .p-multiselect-overlay, .p-datepicker-panel {
+  @apply rounded border border-line;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+.p-select-option, .p-multiselect-option {
+  @apply text-sm rounded;
+}
+
+.p-select-option.p-select-option-selected,
+.p-multiselect-option.p-multiselect-option-selected {
+  @apply bg-primary-50 text-primary-700;
+}
+
+.p-multiselect-chip, .p-chip {
+  @apply bg-gray-300 text-black text-xs rounded;
+}
+
+//Checkbox
+.p-checkbox .p-checkbox-box {
+  @apply rounded-[4px] border-line;
+}
+
+.p-checkbox-checked .p-checkbox-box {
+  border-color: theme('colors.primary.700') !important;
+  background: theme('colors.primary.700') !important;
+}
+
+//Dialog — matches the template's modal: 5px radius, hairline dividers, bold title
+
+.p-dialog {
+  @apply rounded m-0 max-h-full bg-white border border-line !important;
+  box-shadow: 0 4px 74px rgba(208, 208, 208, 0.25) !important;
+}
+
+.p-dialog-header {
+  @apply border-b border-line px-5 py-4;
+}
+
+.p-dialog-title {
+  @apply text-lg font-bold text-heading !important;
+}
+
+.p-dialog-header-actions {
+  @apply text-lg !important;
+}
+
+.p-dialog-content {
+  @apply px-5;
+}
+
+//Tooltip
+.p-tooltip .p-tooltip-text {
+  @apply text-xs rounded;
+}
+
+textarea {
+  @apply border border-solid border-line rounded bg-white text-black text-sm;
+  padding: 0.5rem 0.625rem !important;
+  line-height: 1.6;
+  outline: none;
+
+  &:hover {
+    border-color: theme('colors.primary.300') !important;
+  }
+
+  &:focus,
+  &:enabled:focus {
+    border-color: theme('colors.primary.700') !important;
+    box-shadow: none !important;
+  }
+
+  &::placeholder {
+    font-size: 14px !important;
+    color: #9CA3AF;
+  }
+
+  &.is-invalid:focus,
+  &.is-invalid:hover {
+    border-color: theme('colors.errors.100') !important;
+    caret-color: theme('colors.errors.100') !important;
+  }
+
+  &:disabled, &:read-only {
+    @apply bg-gray-300 border-line text-neural-300;
+    pointer-events: none;
+  }
+}
+
+table {
+  width: 100%;
+}
+
+table thead th {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(var(--black));
+  text-align: start;
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 20px;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+table tbody tr {
+  border-bottom: 1px solid rgba(var(--line));
+}

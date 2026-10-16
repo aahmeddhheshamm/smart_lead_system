@@ -1,0 +1,19 @@
+table {
+  width: 100%;
+}
+
+table thead th {
+  padding: 10px;
+}
+
+td {
+  padding: 0.5rem 10px;
+}
+
+table tbody tr {
+  border-bottom: 1pt solid #eee;
+}
+
+.dark table tbody tr {
+  border-bottom: 1pt solid #333;
+}

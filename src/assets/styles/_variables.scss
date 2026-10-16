@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Lixsos brand palette, sampled from the logo: navy ground, cyan -> blue -> violet mark.
+       Primary is the blue-indigo between the mark's blue and violet (5.2:1 with white text). */
+    --brand-navy: 14, 18, 51;      /* #0E1233 logo background */
+    --brand-cyan: 34, 211, 238;    /* #22D3EE */
+    --brand-sky: 46, 170, 242;     /* #2EAAF2 */
+    --brand-blue: 55, 143, 245;    /* #378FF5 */
+    --brand-indigo: 109, 108, 247; /* #6D6CF7 */
+    --brand-violet: 139, 92, 246;  /* #8B5CF6 */
+
+    --black: 14, 18, 51;
+    --white: 255, 255, 255;
+
+    --primary-700: 79, 91, 234;
+    --primary-600: 95, 107, 240;
+    --primary-500: 124, 131, 245;
+    --primary-400: 156, 162, 248;
+    --primary-300: 189, 193, 251;
+    --primary-200: 215, 218, 253;
+    --primary-100: 230, 232, 254;
+    --primary-50: 241, 242, 255;
+    --primary-20: 248, 249, 255;
+
+    /* neutrals tinted toward the brand navy */
+    --neural-500: 14, 18, 51;
+    --neural-400: 46, 52, 90;
+    --neural-300: 91, 97, 133;
+    --neural-200: 148, 153, 184;
+    --neural-100: 238, 240, 247;
+
+    --gray-800: 10, 13, 36;
+    --gray-700: 34, 40, 82;
+    --gray-500: 46, 52, 90;
+    --gray-400: 148, 153, 184;
+    --gray-300: 246, 247, 251;
+    --gray-200: 233, 236, 245;
+    --gray-100: 91, 97, 133;
+
+    --heading: 14, 18, 51;
+    --line: 230, 232, 241;
+
+    --dashboardBg: 246, 247, 251;
+    --table-header: 240, 242, 248;
+
+  }
+
+  :root.dark {
+    /* surfaces use the logo's own navy so the navy wordmark sits seamlessly on them */
+    --black: 255, 255, 255;
+    --white: 14, 18, 51;
+
+    --primary-700: 124, 131, 245;
+    --primary-600: 156, 162, 248;
+    --primary-500: 109, 108, 247;
+    --primary-400: 79, 91, 234;
+    --primary-300: 64, 72, 170;
+    --primary-200: 46, 52, 120;
+    --primary-100: 34, 40, 92;
+    --primary-50: 28, 33, 78;
+    --primary-20: 20, 24, 62;
+
+    --neural-500: 255, 255, 255;
+    --neural-400: 210, 214, 235;
+    --neural-300: 160, 166, 200;
+    --neural-200: 110, 116, 155;
+    --neural-100: 24, 28, 68;
+
+    --gray-700: 79, 85, 130;
+    --gray-500: 119, 125, 165;
+    --gray-300: 24, 28, 68;
+    --gray-200: 24, 28, 68;
+    --gray-100: 110, 116, 155;
+
+    --heading: 255, 255, 255;
+    --line: 34, 40, 82;
+
+    --dashboardBg: 10, 13, 36;
+    --table-header: 24, 28, 68;
+
+  }
+}
