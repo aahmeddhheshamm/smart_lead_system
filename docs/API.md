@@ -1,5 +1,11 @@
 # API Specification — `/api/v1`
 
+> **Status:** this is the design the frontend was first built against. The implemented backend
+> (Django + DRF) differs in places: JWT with refresh rotation, the `X-Organization-ID` header,
+> `move-stage`, `snooze`, server-side CSV parsing, insights, and so on. The **authoritative contract is now
+> the backend OpenAPI schema** (`contracts/leadflow-openapi.json`, `/api/docs/`), and the mapping is
+> described in [INTEGRATION.md](INTEGRATION.md). This document still describes the mock API (`src/mock`).
+
 The contract between the web app, n8n and the backend. TypeScript shapes live in [`src/types/domain.ts`](../src/types/domain.ts), and the mock implementation in [`src/mock/handlers`](../src/mock/handlers) follows this document exactly. Publish the final version as OpenAPI/Swagger from the backend.
 
 ## 1. Conventions

@@ -9,7 +9,8 @@ import { useLocaleSettings } from "@/composables/useLocaleSettings.ts";
 import { parseCsv } from "@/utils";
 import { IMPORT_FIELDS } from "@/constants/lead";
 import type { ImportJob, ImportPreviewRow } from "@/types/domain";
-import { apiImportCommit, apiImportPreview } from "@/modules/leads/api";
+import { useCustomFields } from "@/composables/useLookups.ts";
+import { apiImportCancel, apiImportCommit, apiImportPreview } from "@/modules/leads/api";
 
 // CSV import in four steps: upload → map columns → server-side preview → import.
 // Nothing is written until the user confirms the preview (PRD 3.2).
@@ -19,6 +20,14 @@ const queryClient = useQueryClient();
 
 type Step = "upload" | "map" | "preview" | "done";
 const step = ref<Step>("upload");
+const file = ref<File | null>(null);
+// the backend parses the upload and keeps a preview record until commit/cancel
+const importId = ref<string | undefined>(undefined);
+const { fields: customFieldDefs } = useCustomFields();
+const mappableFields = computed(() => [
+  ...IMPORT_FIELDS.map((f) => ({ id: f as string, name: t(`fields.${f}`) })),
+  ...customFieldDefs.value.filter((f) => f.label).map((f) => ({ id: `custom:${f.key}`, name: f.label })),
+]);
 const fileName = ref("");
 const columns = ref<string[]>([]);
 const rows = ref<Record<string, string>[]>([]);
@@ -31,8 +40,14 @@ const fileError = ref("");
 const previewFilter = ref<"all" | "duplicate" | "invalid">("all");
 
 watch(visible, (open) => {
-  if (!open) return;
+  if (!open) {
+    // closing before importing discards the server-side preview
+    if (importId.value && step.value === "preview") apiImportCancel(importId.value).catch(() => null);
+    return;
+  }
   step.value = "upload";
+  file.value = null;
+  importId.value = undefined;
   fileName.value = "";
   columns.value = [];
   rows.value = [];
@@ -57,14 +72,16 @@ const GUESS: Record<string, RegExp> = {
 
 const onFile = async (e: Event) => {
   fileError.value = "";
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  if (!/\.csv$/i.test(file.name)) return (fileError.value = t("import.onlyCsv"));
-  if (file.size > 5 * 1024 * 1024) return (fileError.value = t("import.tooLarge"));
-  const parsed = parseCsv(await file.text());
+  const picked = (e.target as HTMLInputElement).files?.[0];
+  if (!picked) return;
+  if (!/\.csv$/i.test(picked.name)) return (fileError.value = t("import.onlyCsv"));
+  if (picked.size > 5 * 1024 * 1024) return (fileError.value = t("import.tooLarge"));
+  // parsed locally only to show the headers for mapping; the API re-parses the original file
+  const parsed = parseCsv(await picked.text());
   if (!parsed.rows.length) return (fileError.value = t("import.empty"));
   if (parsed.rows.length > 5000) return (fileError.value = t("import.tooManyRows"));
-  fileName.value = file.name;
+  file.value = picked;
+  fileName.value = picked.name;
   columns.value = parsed.columns;
   rows.value = parsed.rows;
   mapping.value = Object.fromEntries(
@@ -74,6 +91,12 @@ const onFile = async (e: Event) => {
 };
 
 const mappedFields = computed(() => Object.values(mapping.value).filter(Boolean));
+// preview rows may be keyed by field (name, phone) or by the original CSV header
+const cell = (values: Record<string, string>, field: string) => {
+  const header = Object.keys(mapping.value).find((h) => mapping.value[h] === field);
+  return values[field] || (header ? values[header] : "") || "";
+};
+
 const mappingError = computed(() => {
   if (!mappedFields.value.includes("name")) return t("import.mapName");
   if (!mappedFields.value.includes("phone") && !mappedFields.value.includes("email")) return t("import.mapContact");
@@ -85,7 +108,9 @@ const runPreview = async () => {
   if (mappingError.value) return;
   busy.value = true;
   try {
-    const res = await apiImportPreview({ rows: rows.value, mapping: mapping.value });
+    if (importId.value) apiImportCancel(importId.value).catch(() => null);
+    const res = await apiImportPreview({ file: file.value!, rows: rows.value, mapping: mapping.value });
+    importId.value = res.importId;
     preview.value = res.data;
     step.value = "preview";
   } finally {
@@ -100,7 +125,7 @@ const visiblePreviewRows = computed(() =>
 const commit = async () => {
   busy.value = true;
   try {
-    const res = await apiImportCommit({ rows: rows.value, mapping: mapping.value, duplicatePolicy: duplicatePolicy.value, fileName: fileName.value });
+    const res = await apiImportCommit({ importId: importId.value, rows: rows.value, mapping: mapping.value, duplicatePolicy: duplicatePolicy.value, fileName: fileName.value });
     result.value = res.data;
     step.value = "done";
     ["leads", "pipeline", "dashboard", "tags"].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
@@ -150,7 +175,7 @@ const downloadTemplate = () => {
           <span class="text-xs text-neural-300 truncate">{{ rows[0]?.[col] || "—" }}</span>
           <select v-model="mapping[col]" class="h-9 rounded border border-line bg-white px-2 text-sm text-black" :aria-label="t('import.mapColumn', { column: col })">
             <option value="">{{ t("import.skipColumn") }}</option>
-            <option v-for="f in IMPORT_FIELDS" :key="f" :value="f">{{ t(`fields.${f}`) }}</option>
+            <option v-for="f in mappableFields" :key="f.id" :value="f.id">{{ f.name }}</option>
           </select>
         </div>
       </div>
@@ -199,8 +224,8 @@ const downloadTemplate = () => {
           <tbody>
             <tr v-for="r in visiblePreviewRows" :key="r.row" class="border-t border-line">
               <td class="px-3 py-1.5 text-neural-300">{{ r.row }}</td>
-              <td class="px-3 py-1.5 text-black">{{ r.values.name || "—" }}</td>
-              <td class="px-3 py-1.5 text-neural-300">{{ r.values.phone || r.values.email || "—" }}</td>
+              <td class="px-3 py-1.5 text-black">{{ cell(r.values, "name") || "—" }}</td>
+              <td class="px-3 py-1.5 text-neural-300" dir="ltr">{{ cell(r.values, "phone") || cell(r.values, "email") || "—" }}</td>
               <td class="px-3 py-1.5"><StatusBadge :status="r.status" /></td>
               <td class="px-3 py-1.5 text-xs text-neural-400">{{ r.errors.join("; ") || (r.duplicateOf ? t("import.duplicateOf", { name: r.duplicateOf.name }) : "") }}</td>
             </tr>

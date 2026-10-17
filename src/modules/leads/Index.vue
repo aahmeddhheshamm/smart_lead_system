@@ -20,6 +20,7 @@ import useLeadsFields from "@/modules/leads/composables/useLeadsFields.ts";
 import LeadForm from "@/modules/leads/components/LeadForm.vue";
 import LeadImportModal from "@/modules/leads/components/LeadImportModal.vue";
 import BulkActionsBar from "@/modules/leads/components/BulkActionsBar.vue";
+import { apiExportLeads, apiLeads } from "@/modules/leads/api";
 
 const { t } = useLocaleSettings();
 const { can } = useAuthorization();
@@ -27,7 +28,7 @@ const router = useRouter();
 const route = useRoute();
 const { fields } = useLeadsFields();
 
-const { stageOptions } = useStages();
+const { stages, stageOptions } = useStages();
 const { sourceOptions } = useSources();
 const { memberOptions } = useActiveMembers();
 const { tags } = useTags();
@@ -63,6 +64,8 @@ watch(values, (v) => {
 
 const filters = computed(() => ({
   stageId: values.stageId,
+  // the backend filters stages by key (`status=new,contacted`); the mock by id
+  stageKey: (values.stageId ?? []).map((id: string) => stages.value.find((s) => s.id === id)?.key).filter(Boolean),
   sourceId: values.sourceId,
   ownerId: values.ownerId,
   priority: values.priority,
@@ -96,6 +99,8 @@ const openLead = (lead: any) => router.push({ name: "leadDetails", params: { id:
         title="sidebar.leads"
         :columns="fields"
         list-url="leads"
+        :fetcher="apiLeads"
+        :exporter="apiExportLeads"
         :filters="filters"
         :selectable="can(P.leadsUpdate, P.leadsAssign, P.leadsDelete)"
         :has-export-btn="can(P.leadsExport)"

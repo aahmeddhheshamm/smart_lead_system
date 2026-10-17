@@ -110,20 +110,82 @@
     "valid": "Valid",
     "duplicate": "Duplicate",
     "invalid": "Invalid",
-    "processing": "Processing"
+    "processing": "Processing",
+    "canceled": "Cancelled",
+    "success": "Succeeded",
+    "completed_with_errors": "Completed with errors",
+    "preview": "Preview"
   },
   "options": {
-    "priority": { "low": "Low", "medium": "Medium", "high": "High", "urgent": "Urgent" },
-    "industry": { "real_estate": "Real estate", "clinic": "Clinic / medical center", "agency": "Marketing agency", "services": "Services company", "other": "Other" },
-    "taskType": { "call": "Call", "email": "Email", "meeting": "Meeting / viewing", "follow_up": "Follow-up", "send_proposal": "Send proposal", "other": "Other" },
-    "sourceType": { "website": "Website", "manual": "Manual / phone", "import": "Import", "ads": "Advertising", "referral": "Referral", "email": "Email", "whatsapp": "WhatsApp", "other": "Other" },
-    "lostReason": { "price": "Price / budget", "competitor": "Chose a competitor", "no_response": "No response", "not_qualified": "Not qualified", "timing": "Bad timing", "location": "Location", "other": "Other" },
-    "outcome": { "reached": "Reached", "no_answer": "No answer", "busy": "Busy", "wrong_number": "Wrong number", "callback_requested": "Asked for a callback", "interested": "Interested", "not_interested": "Not interested" },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "industry": {
+      "real_estate": "Real estate",
+      "clinic": "Clinic / medical center",
+      "agency": "Marketing agency",
+      "other": "Other"
+    },
+    "taskType": {
+      "call": "Call",
+      "email": "Email",
+      "meeting": "Meeting",
+      "viewing": "Viewing",
+      "follow_up": "Follow-up",
+      "send_quote": "Send quote",
+      "whatsapp": "WhatsApp",
+      "other": "Other"
+    },
+    "sourceType": {
+      "website": "Website",
+      "ads": "Advertising",
+      "social": "Social media",
+      "referral": "Referral",
+      "phone": "Phone",
+      "walk_in": "Walk-in",
+      "import": "Import",
+      "api": "API",
+      "other": "Other"
+    },
+    "lostReason": {
+      "price": "Price / budget",
+      "competitor": "Chose a competitor",
+      "no_response": "No response",
+      "not_qualified": "Not qualified",
+      "timing": "Bad timing",
+      "location": "Location",
+      "other": "Other"
+    },
+    "outcome": {
+      "reached": "Reached",
+      "no_answer": "No answer",
+      "busy": "Busy",
+      "wrong_number": "Wrong number",
+      "callback_requested": "Asked for a callback",
+      "interested": "Interested",
+      "not_interested": "Not interested"
+    },
     "activity": {
-      "note": "Note", "call": "Call", "email": "Email", "meeting": "Meeting", "whatsapp": "WhatsApp",
-      "created": "Lead created", "updated": "Lead updated", "stage_changed": "Stage changed", "owner_changed": "Owner changed",
-      "task_created": "Task created", "task_completed": "Task completed", "ai_classified": "AI classification",
-      "automation": "Automation", "imported": "Imported", "do_not_contact": "Contact preference changed"
+      "note": "Note",
+      "call": "Call",
+      "email": "Email",
+      "meeting": "Meeting",
+      "whatsapp": "WhatsApp",
+      "created": "Lead created",
+      "updated": "Lead updated",
+      "stage_changed": "Stage changed",
+      "owner_changed": "Owner changed",
+      "task_created": "Task created",
+      "task_completed": "Task completed",
+      "ai_classified": "AI classification",
+      "automation": "Automation",
+      "imported": "Imported",
+      "do_not_contact": "Contact preference changed",
+      "sms": "SMS",
+      "inbound_message": "Customer reply"
     }
   },
   "customFields": {
@@ -135,8 +197,22 @@
     "preferredDate": "Preferred date",
     "currency": "Currency"
   },
-  "days": { "0": "Sun", "1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu", "5": "Fri", "6": "Sat" },
-  "period": { "7d": "7 days", "30d": "30 days", "90d": "90 days", "month": "This month", "custom": "Custom" },
+  "days": {
+    "0": "Sun",
+    "1": "Mon",
+    "2": "Tue",
+    "3": "Wed",
+    "4": "Thu",
+    "5": "Fri",
+    "6": "Sat"
+  },
+  "period": {
+    "7d": "7 days",
+    "30d": "30 days",
+    "90d": "90 days",
+    "month": "This month",
+    "custom": "Custom"
+  },
   "definitions": {
     "newLeads": "Leads created inside the selected period.",
     "notFollowedUp": "Open leads with no call, email, meeting or WhatsApp logged yet (all time).",
@@ -174,17 +250,43 @@
     "joinOrganization": "Join {name}",
     "invitedAs": "{email} was invited as {role}.",
     "acceptInvitation": "Accept invitation",
-    "invitationInvalid": "This invitation is no longer valid."
+    "invitationInvalid": "This invitation is no longer valid.",
+    "emailVerified": "Email verified",
+    "emailVerifiedBody": "Thanks — your email address is confirmed.",
+    "emailVerifyFailed": "We couldn't verify your email",
+    "emailVerifyFailedBody": "The link is invalid or has expired. Request a new one from the banner in the app.",
+    "acceptAsCurrentUser": "You'll join with your current account ({email}).",
+    "verifyEmailBanner": "Please verify your email address ({email}) to keep your account secure.",
+    "resendVerification": "Resend email",
+    "verificationSent": "Verification email sent"
   },
   "onboarding": {
     "stepOf": "Step {n} of {total}",
     "skip": "Skip for now",
     "finish": "Go to my dashboard",
     "invitesSent": "{count} invitation(s) sent",
-    "company": { "title": "Tell us about your business", "subtitle": "This sets your reports' time zone and default currency.", "timezoneHint": "Reminders, business hours and daily reports use this time zone." },
-    "pipeline": { "title": "Your sales pipeline", "subtitle": "We start you with the stages most teams use.", "hint": "You can rename, reorder or add stages anytime in Settings → Pipeline." },
-    "team": { "title": "Invite your team", "subtitle": "Sales agents only see the leads assigned to them.", "addAnother": "Add another", "send": "Send invitations" },
-    "website": { "title": "Connect your website", "subtitle": "Send website form submissions straight into LeadFlow.", "body": "We'll create a secure webhook endpoint and signing secret for your website form.", "connect": "Create webhook" }
+    "company": {
+      "title": "Tell us about your business",
+      "subtitle": "This sets your reports' time zone and default currency.",
+      "timezoneHint": "Reminders, business hours and daily reports use this time zone."
+    },
+    "pipeline": {
+      "title": "Your sales pipeline",
+      "subtitle": "We start you with the stages most teams use.",
+      "hint": "You can rename, reorder or add stages anytime in Settings → Pipeline."
+    },
+    "team": {
+      "title": "Invite your team",
+      "subtitle": "Sales agents only see the leads assigned to them.",
+      "addAnother": "Add another",
+      "send": "Send invitations"
+    },
+    "website": {
+      "title": "Connect your website",
+      "subtitle": "Send website form submissions straight into LeadFlow.",
+      "body": "We'll create a secure webhook endpoint and signing secret for your website form.",
+      "connect": "Create webhook"
+    }
   },
   "dashboard": {
     "goodMorning": "Good morning, {name}",
@@ -204,7 +306,11 @@
     "needsAttention": "Needs attention",
     "needsAttentionHint": "Uncontacted leads, overdue follow-ups and AI results to review",
     "allClear": "All clear — nothing is waiting on you.",
-    "attention": { "uncontacted": "Not contacted yet", "overdue_task": "Overdue follow-up", "needs_review": "Needs review" },
+    "attention": {
+      "uncontacted": "Not contacted yet",
+      "overdue_task": "Overdue follow-up",
+      "needs_review": "Needs review"
+    },
     "leadsBySource": "Leads by source",
     "inPeriod": "In the selected period",
     "wonCount": "{count} won",
@@ -261,12 +367,20 @@
     "activityLogged": "Activity logged",
     "notePlaceholder": "Write a note for your team…",
     "activityPlaceholder": "What happened? (optional)",
-    "marksContacted": "Logging this updates “last contacted”."
+    "marksContacted": "Logging this updates “last contacted”.",
+    "duplicateBlocked": "A lead with these contact details already exists",
+    "duplicateBlockedHint": "Open the existing lead, or create a separate lead anyway if this is a different person.",
+    "createAnyway": "Create anyway"
   },
   "import": {
     "title": "Import leads from CSV",
     "steps": "Import steps",
-    "step": { "upload": "Upload", "map": "Map columns", "preview": "Preview", "done": "Done" },
+    "step": {
+      "upload": "Upload",
+      "map": "Map columns",
+      "preview": "Preview",
+      "done": "Done"
+    },
     "hint": "Upload a CSV with one lead per row and a header row. Nothing is saved until you confirm the preview.",
     "chooseFile": "Choose a CSV file",
     "limits": "Up to 5,000 rows · 5 MB · UTF-8",
@@ -318,7 +432,12 @@
     "week": "Week",
     "prevWeek": "Previous week",
     "nextWeek": "Next week",
-    "empty": { "today": "Nothing left for today.", "overdue": "No overdue tasks. Nice work!", "upcoming": "Nothing scheduled yet.", "completed": "No completed tasks yet." },
+    "empty": {
+      "today": "Nothing left for today.",
+      "overdue": "No overdue tasks. Nice work!",
+      "upcoming": "Nothing scheduled yet.",
+      "completed": "No completed tasks yet."
+    },
     "completeTask": "Complete task",
     "markDone": "Mark as done",
     "done": "Done",
@@ -353,14 +472,20 @@
     "notRun": "Not analysed yet.",
     "noMessage": "No customer message to analyse.",
     "run": "Analyse message",
-    "rerun": "Analyse again"
+    "rerun": "Analyse again",
+    "pending": "The AI is analysing this lead — results appear here automatically.",
+    "requested": "AI analysis requested"
   },
   "timeline": {
     "system": "System",
     "empty": "No activity yet.",
     "created": "Lead created · source: {source}",
     "updated": "Updated {fields}",
-    "updatedReason": { "duplicate_merged": "New submission merged into this lead", "ai_confirmed": "AI suggestion confirmed", "ai_rejected": "AI suggestion rejected" },
+    "updatedReason": {
+      "duplicate_merged": "New submission merged into this lead",
+      "ai_confirmed": "AI suggestion confirmed",
+      "ai_rejected": "AI suggestion rejected"
+    },
     "stageChanged": "Moved from {from} to {to}",
     "ownerChanged": "Assigned to {to}",
     "taskCreated": "Task created: {title}",
@@ -394,13 +519,42 @@
     "duration": "Duration",
     "openLead": "Open lead",
     "types": {
-      "lead_ingestion": { "name": "Lead intake", "description": "Validates new leads from any source, normalizes phone/email and applies your duplicate rule." },
-      "lead_assignment": { "name": "Smart assignment", "description": "Assigns new leads to an active salesperson using your chosen strategy." },
-      "first_response_sla": { "name": "First-response alert", "description": "Alerts the owner when a new lead hasn't been contacted in time." },
-      "stale_lead_follow_up": { "name": "Stale lead follow-up", "description": "Creates a follow-up task when an open lead goes untouched." },
-      "stop_on_close": { "name": "Stop follow-ups on close", "description": "Cancels automated follow-ups when a lead is won, lost or opts out." },
-      "ai_classification": { "name": "AI qualification", "description": "Classifies the inquiry, extracts needs and suggests priority and next step." },
-      "daily_report": { "name": "Daily report", "description": "Emails managers a short summary of yesterday's leads, follow-ups and conversions." }
+      "lead_ingestion": {
+        "name": "Lead intake",
+        "description": "Validates new leads from any source, normalizes phone/email and applies your duplicate rule."
+      },
+      "lead_assignment": {
+        "name": "Smart assignment",
+        "description": "Assigns new leads to an active salesperson using your chosen strategy."
+      },
+      "first_response_sla": {
+        "name": "First-response alert",
+        "description": "Alerts the owner when a new lead hasn't been contacted in time."
+      },
+      "stale_lead_follow_up": {
+        "name": "Stale lead follow-up",
+        "description": "Creates a follow-up task when an open lead goes untouched."
+      },
+      "stop_on_close": {
+        "name": "Stop follow-ups on close",
+        "description": "Cancels automated follow-ups when a lead is won, lost or opts out."
+      },
+      "ai_classification": {
+        "name": "AI qualification",
+        "description": "Classifies the inquiry, extracts needs and suggests priority and next step."
+      },
+      "daily_report": {
+        "name": "Daily report",
+        "description": "Emails managers a short summary of yesterday's leads, follow-ups and conversions."
+      },
+      "stop_on_reply": {
+        "name": "Stop on customer reply",
+        "description": "Stops a follow-up sequence when the customer replies."
+      },
+      "task_reminder": {
+        "name": "Task reminders",
+        "description": "Reminds the assignee before a task is due."
+      }
     },
     "summary": {
       "ingestion": "Duplicates: {policy} · match on {fields}",
@@ -412,7 +566,11 @@
     },
     "config": {
       "dedupePolicy": "When a lead matches an existing one",
-      "policy": { "merge": "Merge", "flag": "Create & flag", "reject": "Reject" },
+      "policy": {
+        "merge": "Merge",
+        "flag": "Create & flag",
+        "reject": "Reject"
+      },
       "policyHint": {
         "merge": "Add the new message to the existing lead; never overwrite curated fields.",
         "flag": "Create a new lead and mark it as needing review.",
@@ -420,7 +578,11 @@
       },
       "matchOn": "Match on",
       "strategy": "Assignment strategy",
-      "strategies": { "round_robin": "Round robin", "specialty": "By specialty", "manual": "Manual" },
+      "strategies": {
+        "round_robin": "Round robin",
+        "specialty": "By specialty",
+        "manual": "Manual"
+      },
       "strategyHint": {
         "round_robin": "Rotate between active sales agents.",
         "specialty": "Match the lead's area/service to an agent's specialties, then fall back to round robin.",
@@ -436,7 +598,32 @@
       "aiPrivacy": "Only the message text is sent to the AI provider — never phone numbers or emails. Messages are treated as data, not instructions.",
       "hour": "Send at (hour, 0–23)",
       "hourHint": "Uses the organization's time zone.",
-      "noSettings": "This automation has no settings."
+      "noSettings": "This automation has no settings.",
+      "commaSeparated": "Comma-separated",
+      "keys": {
+        "strategy": "Assignment strategy",
+        "createFirstTask": "Create a first-contact task",
+        "firstTaskDueMinutes": "First task due in (minutes)",
+        "notifyOwner": "Notify the owner in the app",
+        "notifyEmail": "Also notify by email",
+        "minutes": "Minutes before alerting",
+        "businessHoursOnly": "Only during business hours",
+        "escalateToManagersAfterMinutes": "Escalate to managers after (minutes)",
+        "channels": "Channels",
+        "businessDays": "Business days without an update",
+        "days": "Days without an update",
+        "hours": "Hours",
+        "minConfidence": "Minimum confidence",
+        "hour": "Send at (hour, 0–23)",
+        "minutesBefore": "Remind before (minutes)",
+        "recipients": "Recipients",
+        "dedupePolicy": "When a lead matches an existing one",
+        "matchOn": "Match on"
+      },
+      "values": {
+        "in_app": "In app",
+        "email": "Email"
+      }
     },
     "steps": {
       "validate_normalize": "Validate & normalize",
@@ -452,20 +639,60 @@
       "cancel_scheduled_follow_ups": "Cancel follow-ups",
       "alert_owners": "Alert owners",
       "create_follow_up_tasks": "Create follow-up tasks"
-    }
+    },
+    "runsTotal": "Runs",
+    "failuresTotal": "Failures",
+    "runNow": "Run now",
+    "ranNow": "Automation ran — see the execution log",
+    "resetDefaults": "Reset to defaults",
+    "resetDone": "Settings reset to defaults",
+    "input": "Input",
+    "output": "Output"
   },
   "integrations": {
     "subtitle": "Start with the sources your team actually uses. Credentials are stored encrypted on the server and never shown again after setup.",
-    "priority": { "core": "Core", "later": "Coming next", "future": "Later phase" },
+    "priority": {
+      "core": "Core",
+      "later": "Coming next",
+      "future": "Later phase"
+    },
     "providers": {
-      "website_form": { "name": "Website form (webhook)", "description": "Receive leads from your website's contact forms through a signed webhook." },
-      "email": { "name": "Email provider", "description": "Send notifications and daily reports from your own address." },
-      "csv_import": { "name": "CSV import", "description": "Bring in your existing leads from Excel or another CRM." },
-      "google_sheets": { "name": "Google Sheets", "description": "Sync leads to or from a spreadsheet." },
-      "external_crm": { "name": "External CRM", "description": "Keep leads in sync with the CRM you already use." },
-      "calendar": { "name": "Calendar", "description": "Book follow-up meetings directly in your calendar." },
-      "whatsapp_business": { "name": "WhatsApp Business Platform", "description": "Official WhatsApp messaging with approved templates and customer consent." },
-      "ad_leads": { "name": "Ad lead forms", "description": "Receive leads from supported advertising platforms." }
+      "website_form": {
+        "name": "Website form (webhook)",
+        "description": "Receive leads from your website's contact forms through a signed webhook."
+      },
+      "email": {
+        "name": "Email provider",
+        "description": "Send notifications and daily reports from your own address."
+      },
+      "csv_import": {
+        "name": "CSV import",
+        "description": "Bring in your existing leads from Excel or another CRM."
+      },
+      "google_sheets": {
+        "name": "Google Sheets",
+        "description": "Sync leads to or from a spreadsheet."
+      },
+      "external_crm": {
+        "name": "External CRM",
+        "description": "Keep leads in sync with the CRM you already use."
+      },
+      "calendar": {
+        "name": "Calendar",
+        "description": "Book follow-up meetings directly in your calendar."
+      },
+      "whatsapp_business": {
+        "name": "WhatsApp Business Platform",
+        "description": "Official WhatsApp messaging with approved templates and customer consent."
+      },
+      "ad_leads": {
+        "name": "Ad lead forms",
+        "description": "Receive leads from supported advertising platforms."
+      },
+      "api": {
+        "name": "API key",
+        "description": "Send leads from your own systems with an API key."
+      }
     },
     "connect": "Connect",
     "reconnect": "Rotate secret & save",
@@ -495,7 +722,12 @@
       "secrets": "Secrets are encrypted at rest and never sent to the browser again.",
       "dedupe": "Each event carries an id, so a retried delivery never creates a second lead.",
       "retry": "Failures are logged and retried safely from Execution logs."
-    }
+    },
+    "emailProvider": "Provider",
+    "apiKey": "API key",
+    "apiKeyKeep": "Leave empty to keep the current key",
+    "apiKeyHint": "Stored encrypted on the server and never shown again.",
+    "rotateSecret": "Rotate signing secret"
   },
   "reports": {
     "subtitle": "Where your leads come from, how fast your team responds, and what closes.",
@@ -537,11 +769,26 @@
       "integration_failed": "An integration fails",
       "import_failed_rows": "Import rows fail",
       "automation_finished": "An automation finishes",
-      "usage_limit": "Usage limit is near"
+      "usage_limit": "Usage limit is near",
+      "uncontacted_lead": "A new lead isn't contacted in time",
+      "unassigned_lead": "A lead can't be assigned",
+      "import_finished": "An import finishes",
+      "automation_failed": "An automation fails",
+      "ai_review_needed": "AI results need review",
+      "daily_report": "Daily report"
     }
   },
   "settings": {
-    "tabs": { "general": "General", "members": "Members", "roles": "Roles", "pipeline": "Pipeline", "sources": "Lead sources", "notifications": "Notifications", "billing": "Plan & usage", "audit": "Audit log" },
+    "tabs": {
+      "general": "General",
+      "members": "Members",
+      "roles": "Roles",
+      "pipeline": "Pipeline",
+      "sources": "Lead sources",
+      "notifications": "Notifications",
+      "billing": "Plan & usage",
+      "audit": "Audit log"
+    },
     "readOnly": "Only owners and admins can change these settings.",
     "organization": "Organization",
     "organizationHint": "Shown to your team and used for reports.",
@@ -578,7 +825,11 @@
     "pipelineRules": "Rules: at least one open stage, exactly one Won and one Lost stage, max 12 stages. A stage with leads can't be removed until they are moved.",
     "newStage": "New stage",
     "addStage": "Add stage",
-    "stageType": { "open": "Open", "won": "Won", "lost": "Lost" },
+    "stageType": {
+      "open": "Open",
+      "won": "Won",
+      "lost": "Lost"
+    },
     "color": "Color",
     "dragToReorder": "Drag to reorder",
     "addAutoTask": "+ Auto task",
@@ -605,11 +856,30 @@
     "month": "month",
     "renews": "renews {date}",
     "changePlan": "Change plan",
-    "usage": { "leads": "Leads", "members": "Active members", "automation_runs": "Automation runs (this month)", "ai_requests": "AI requests (this month)" },
+    "usage": {
+      "leads": "Leads",
+      "members": "Active members",
+      "automation_runs": "Automation runs (this month)",
+      "ai_requests": "AI requests (this month)"
+    },
     "billingNote": "AI, email and messaging provider costs are billed according to your agreement.",
     "audit": "Audit log",
     "auditHint": "Who changed permissions, exported data, deleted records or changed integrations.",
-    "allActions": "All actions"
+    "allActions": "All actions",
+    "resend": "Resend",
+    "invitationResent": "Invitation resent",
+    "leadRules": "Lead rules",
+    "leadRulesHint": "How new leads from any source are de-duplicated, and the reasons offered when a deal is lost.",
+    "dedupAction": {
+      "update": "Update the existing lead",
+      "skip": "Skip the new lead",
+      "flag": "Create it and flag for review"
+    },
+    "lostReasons": "Lost reasons",
+    "lostReasonsHint": "One per line. Shown when someone marks a lead as Lost.",
+    "planRequested": "Plan change requested — our team will confirm it shortly.",
+    "currentPlan": "Current plan",
+    "choosePlan": "Choose this plan"
   },
   "profile": {
     "changePasswordHint": "Changing your password signs you out on every other device.",
@@ -618,7 +888,9 @@
     "lastSeen": "last seen {when}",
     "thisDevice": "This device",
     "signOut": "Sign out",
-    "sessionRevoked": "Session signed out"
+    "sessionRevoked": "Session signed out",
+    "othersRevoked": "Signed out of all other devices",
+    "signOutOthers": "Sign out other devices"
   },
   "fields": {
     "name": "Name",
@@ -689,7 +961,9 @@
     "automation": "Automation",
     "period": "Period",
     "from": "From",
-    "to": "To"
+    "to": "To",
+    "yes": "Yes",
+    "no": "No"
   },
   "validations": {
     "required": "{field} is required",
@@ -762,5 +1036,8 @@
     "refreshing": "Refreshing…",
     "reference": "ref",
     "exportReady": "Export downloaded"
+  },
+  "navbar": {
+    "switchOrganization": "Switch organization"
   }
 }

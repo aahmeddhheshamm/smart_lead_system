@@ -63,7 +63,7 @@ const connectWebsite = async () => {
   try {
     const res = await apiConnect("website_form", {});
     secret.value = res.secret ?? null;
-    endpoint.value = res.data.config?.endpoint ?? "";
+    endpoint.value = res.data.endpointUrl ?? res.data.config?.endpoint ?? "";
   } finally {
     busy.value = false;
   }

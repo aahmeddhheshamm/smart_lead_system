@@ -35,6 +35,19 @@ export default [
         component: () => import('./acceptInvite/Index.vue'),
         meta: { title: 'Join your team', public: true },
       },
+      {
+        path: '/accept-invite',
+        alias: ['/invitations/accept'],
+        name: 'acceptInviteQuery',
+        component: () => import('./acceptInvite/Index.vue'),
+        meta: { title: 'Join your team', public: true },
+      },
+      {
+        path: '/verify-email',
+        name: 'verifyEmail',
+        component: () => import('./verifyEmail/Index.vue'),
+        meta: { title: 'Verify email', public: true },
+      },
     ],
   },
 ]

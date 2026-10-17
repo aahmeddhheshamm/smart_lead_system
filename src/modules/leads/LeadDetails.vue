@@ -15,11 +15,10 @@ import MainButton from "@/components/buttons/MainButton.vue";
 import useFetch from "@/composables/useFetch";
 import { useLocaleSettings } from "@/composables/useLocaleSettings.ts";
 import { useAuthorization } from "@/composables/useAuthorization.ts";
-import { useActiveMembers } from "@/composables/useLookups.ts";
+import { useActiveMembers, useCustomFields } from "@/composables/useLookups.ts";
 import { useAuthStore } from "@/store/auth.ts";
 import { changeDateFormat, formatMoney, fromNow, isOverdue } from "@/utils";
 import { P } from "@/config/permissions";
-import { CUSTOM_FIELDS_BY_INDUSTRY } from "@/constants/lead";
 import type { Lead, Task } from "@/types/domain";
 import { apiDoNotContact, apiLead, apiLeadTasks, apiUpdateLead } from "@/modules/leads/api";
 import LeadForm from "@/modules/leads/components/LeadForm.vue";
@@ -54,7 +53,13 @@ const openTasks = computed<Task[]>(() => (tasksData.value?.data ?? []).filter((x
 const closedTasks = computed<Task[]>(() => (tasksData.value?.data ?? []).filter((x) => x.status !== "open").slice(0, 5));
 
 const { memberOptions } = useActiveMembers();
-const customFieldDefs = computed(() => CUSTOM_FIELDS_BY_INDUSTRY[auth.organization?.industry ?? "other"] ?? []);
+const { fields: customFieldDefs } = useCustomFields();
+const fieldValue = (key: string) => {
+  const v = lead.value?.customFields?.[key];
+  if (v === null || v === undefined || v === "") return "—";
+  if (key === "budget") return formatMoney(v, currency.value);
+  return Array.isArray(v) ? v.join(", ") : String(v);
+};
 const currency = computed(() => auth.organization?.currency ?? "");
 
 const canEdit = computed(() => can(P.leadsUpdate));
@@ -228,8 +233,8 @@ const copy = async (text: string) => {
                 <div><dt class="text-xs text-neural-300">{{ t("fields.createdAt") }}</dt><dd class="text-heading">{{ changeDateFormat(lead.createdAt, "ll") }}</dd></div>
                 <div><dt class="text-xs text-neural-300">{{ t("fields.updatedAt") }}</dt><dd class="text-heading" v-tooltip="changeDateFormat(lead.updatedAt)">{{ fromNow(lead.updatedAt) }}</dd></div>
                 <div v-for="f in customFieldDefs" :key="f.key">
-                  <dt class="text-xs text-neural-300">{{ t(`customFields.${f.key}`) }}</dt>
-                  <dd class="text-heading">{{ f.key === "budget" ? formatMoney(lead.customFields?.[f.key], currency) : lead.customFields?.[f.key] ?? "—" }}</dd>
+                  <dt class="text-xs text-neural-300">{{ f.label || t(`customFields.${f.key}`) }}</dt>
+                  <dd class="text-heading">{{ fieldValue(f.key) }}</dd>
                 </div>
               </div>
               <div v-if="lead.message" class="pt-3 border-t border-line">

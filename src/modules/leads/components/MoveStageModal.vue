@@ -5,8 +5,7 @@ import { useQueryClient } from "@tanstack/vue-query";
 import MainModal from "@/components/UI/modals/MainModal.vue";
 import MainButton from "@/components/buttons/MainButton.vue";
 import { useLocaleSettings } from "@/composables/useLocaleSettings.ts";
-import { useOptions, useStages } from "@/composables/useLookups.ts";
-import { LOST_REASONS } from "@/constants/lead";
+import { useLostReasons, useStages } from "@/composables/useLookups.ts";
 import { apiBulkLeads, apiMoveLead } from "@/modules/leads/api";
 
 // Moves one lead (leadId) or many (leadIds). Lost requires a reason (business rule).
@@ -22,7 +21,7 @@ const visible = defineModel<boolean>("visible", { default: false });
 const { t } = useLocaleSettings();
 const queryClient = useQueryClient();
 const { stages } = useStages();
-const reasonOptions = useOptions("lostReason", LOST_REASONS);
+const reasonOptions = useLostReasons();
 
 const stageId = ref<string | null>(null);
 const lostReason = ref<string | null>(null);

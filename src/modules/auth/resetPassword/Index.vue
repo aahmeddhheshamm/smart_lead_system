@@ -16,13 +16,15 @@ const route = useRoute();
 const router = useRouter();
 const rules = usePasswordRules();
 const token = computed(() => (typeof route.query.token === "string" ? route.query.token : ""));
+// the backend's reset email links to /reset-password?uid=…&token=…
+const uid = computed(() => (typeof route.query.uid === "string" ? route.query.uid : undefined));
 
 const schema = computed(() => yup.object({ password: rules.password(), confirmPassword: rules.confirm() }));
 const { handleSubmit } = useForm({ validationSchema: schema, initialValues: { password: "", confirmPassword: "" } });
 const { mutate, isPending } = useMutate({ mutationKey: ["reset-password"], mutationFn: apiResetPassword });
 
 const onSubmit = handleSubmit((values) => {
-  mutate({ token: token.value, password: values.password }, {
+  mutate({ token: token.value, uid: uid.value, password: values.password }, {
     onSuccess: (res) => {
       toast.success(res.message || t("messages.passwordChanged"));
       router.push({ name: "login" });

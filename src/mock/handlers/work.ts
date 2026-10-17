@@ -81,7 +81,7 @@ export function registerWork() {
     task.notes = body?.notes ?? task.notes
     if (task.leadId) {
       const lead = ctx.db.leads.find((l) => l.id === task.leadId && l.organizationId === ctx.orgId)
-      if (lead && ['call', 'email', 'meeting', 'follow_up', 'send_proposal'].includes(task.type)) markContacted(ctx, lead)
+      if (lead && ['call', 'email', 'meeting', 'viewing', 'follow_up', 'send_quote', 'whatsapp'].includes(task.type)) markContacted(ctx, lead)
       logActivity(ctx, task.leadId, 'task_completed', { title: task.title, outcome: task.outcome, notes: task.notes })
       if (lead) {
         const next = ctx.db.tasks.filter((t) => t.leadId === lead.id && t.status === 'open').sort((a, b) => (a.dueAt > b.dueAt ? 1 : -1))[0]

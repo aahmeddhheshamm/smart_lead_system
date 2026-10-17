@@ -6,7 +6,12 @@ import { useLocaleSettings } from "@/composables/useLocaleSettings.ts";
 
 // Downloads `{listUrl}/export?format=csv` with the list's current search/filters applied.
 // The backend enforces the export permission and only exports rows the user may see.
-export function useExportTable(getListUrl: () => string, getParams: () => Record<string, any> = () => ({})) {
+export function useExportTable(
+    getListUrl: () => string,
+    getParams: () => Record<string, any> = () => ({}),
+    // module API function returning the CSV blob (used instead of GET {listUrl}/export)
+    exporter: ((query: Record<string, any>) => Promise<any>) | null = null
+) {
     const { t } = useLocaleSettings();
     const { downloadFile } = useDownloadFile();
     const isExporting = ref(false);
@@ -17,7 +22,9 @@ export function useExportTable(getListUrl: () => string, getParams: () => Record
 
         isExporting.value = true;
         try {
-            const response = await InterceptorHelper.intercept(`${listUrl}/export`, undefined, { format, ...getParams() });
+            const response = exporter
+                ? await exporter(getParams())
+                : await InterceptorHelper.intercept(`${listUrl}/export`, undefined, { format, ...getParams() });
             const stamp = new Date().toISOString().slice(0, 10);
             downloadFile(response, "text/csv;charset=utf-8", `${listUrl.split("/").pop() || "export"}-${stamp}`, format);
             toast.success(t("messages.exportReady"));

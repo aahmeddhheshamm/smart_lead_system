@@ -51,7 +51,7 @@ const retry = async (run: AutomationRun) => {
   }
 };
 const duration = (run: AutomationRun) =>
-    run.finishedAt ? `${Math.max(0, new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime())} ms` : "—";
+    run.durationMs != null ? `${run.durationMs} ms` : run.finishedAt ? `${Math.max(0, new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime())} ms` : "—";
 </script>
 
 <template>
@@ -85,7 +85,7 @@ const duration = (run: AutomationRun) =>
             <Icon icon="lucide:chevron-right" class="w-4 h-4 text-neural-300 transition-transform shrink-0 rtl:rotate-180" :class="{ 'rotate-90 rtl:rotate-90': expanded === run.id }" />
             <StatusBadge :status="run.status" />
             <span class="min-w-0">
-              <span class="block text-sm font-medium text-heading truncate">{{ run.rule ? t(`automations.types.${run.rule.type}.name`) : "—" }}<span v-if="run.lead" class="text-neural-300 font-normal"> · {{ run.lead.name }}</span></span>
+              <span class="block text-sm font-medium text-heading truncate">{{ run.rule ? run.rule.name || ($te(`automations.types.${run.rule.type}.name`) ? t(`automations.types.${run.rule.type}.name`) : run.rule.type) : "—" }}<span v-if="run.lead" class="text-neural-300 font-normal"> · {{ run.lead.name }}</span></span>
               <span class="block text-xs text-neural-300 truncate">{{ run.trigger }} · {{ t("automations.attempt", { n: run.attempt }) }} · <span v-tooltip="changeDateFormat(run.startedAt)">{{ fromNow(run.startedAt) }}</span></span>
             </span>
           </button>
@@ -99,6 +99,10 @@ const duration = (run: AutomationRun) =>
             <p><span class="text-neural-300">{{ t("automations.runId") }}:</span> <code>{{ run.id }}</code></p>
             <p><span class="text-neural-300">{{ t("automations.eventId") }}:</span> <code>{{ run.eventId }}</code></p>
             <p><span class="text-neural-300">{{ t("automations.duration") }}:</span> {{ duration(run) }}</p>
+          </div>
+          <div v-if="!run.steps.length && (run.input || run.output)" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div v-if="run.input"><p class="text-neural-300 mb-1">{{ t("automations.input") }}</p><pre class="rounded bg-white border border-line p-2 overflow-x-auto max-h-48" dir="ltr">{{ JSON.stringify(run.input, null, 2) }}</pre></div>
+            <div v-if="run.output"><p class="text-neural-300 mb-1">{{ t("automations.output") }}</p><pre class="rounded bg-white border border-line p-2 overflow-x-auto max-h-48" dir="ltr">{{ JSON.stringify(run.output, null, 2) }}</pre></div>
           </div>
           <ol class="flex flex-col gap-1.5">
             <li v-for="(step, i) in run.steps" :key="i" class="flex items-center gap-2">

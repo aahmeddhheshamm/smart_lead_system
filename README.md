@@ -2,17 +2,19 @@
 
 Multi-tenant SaaS web app that collects leads from every source in one place, assigns them to the right salesperson, keeps every lead on a clear next step, and shows managers what actually converts.
 
-This repository is the **web frontend** (Vue 3 + Vite + TypeScript). It talks to the LeadFlow REST API (`/api/v1`) described in [docs/API.md](docs/API.md). Until the backend exists, the app runs end-to-end against an **in-browser mock API** that implements the same contract and business rules.
+This repository is the **web frontend** (Vue 3 + Vite + TypeScript). It is integrated with the **LeadFlow backend** (Django + DRF, `/api/v1`, JWT + `X-Organization-ID`). See [docs/INTEGRATION.md](docs/INTEGRATION.md). An **in-browser mock API** with demo data is still available for demos and offline work (`VITE_USE_MOCK=true`).
 
 ## Quick start
 
 ```bash
 npm install
-cp .env.example .env      # VITE_USE_MOCK=true by default
-npm run dev               # http://localhost:5173
+cp .env.example .env      # set VITE_DEV_PROXY_TARGET to the backend URL (e.g. the ngrok URL)
+npm run dev               # http://localhost:5173 — /api is proxied to the backend
 ```
 
-Sign in with a demo account (mock mode only). Every demo account uses the password `Password123!`.
+Create a workspace on `/register`, or sign in with an existing backend account.
+
+**Demo mode** (`VITE_USE_MOCK=true`): sign in with a demo account. Every demo account uses the password `Password123!`.
 
 | Email | Role |
 | --- | --- |
@@ -34,12 +36,16 @@ The mock stores its data in `localStorage` (`leadflow.mock.db.v2`). To restore t
 | `npm run build:check` | Type-check (`vue-tsc`), then build |
 | `npm run preview` | Serve the production build locally |
 | `npm run test:mock` | Business-rule smoke test against the mock API (tenant isolation, dedupe, idempotency, assignment, stop-on-close, import, webhooks, permissions) |
+| `npm run test:contract` | Checks every endpoint the backend adapter calls exists in the backend OpenAPI snapshot (`contracts/leadflow-openapi.json`) |
+| `API_SCHEMA_URL=https://<api>/api/schema/?format=json npm run contract:update` | Refreshes the OpenAPI snapshot |
 
 ## Configuration
 
 | Variable | Description |
 | --- | --- |
-| `VITE_APP_API_URL` | API base URL including `/api/v1/` and a trailing slash |
+| `VITE_APP_API_URL` | API base including `/api/v1/` and a trailing slash (`/api/v1/` with the dev proxy) |
+| `VITE_DEV_PROXY_TARGET` | Dev only: backend origin the Vite server proxies `/api` to (required for ngrok) |
+| `VITE_PUBLIC_API_URL` | Absolute API URL shown to website developers (webhook ingest URL) |
 | `VITE_USE_MOCK` | `true` = in-browser mock API. **Must be `false` for staging/production.** |
 
 ## Project structure
@@ -49,7 +55,8 @@ src/
 ├── config/permissions.ts      # permission keys + default role matrix (mirrors the backend)
 ├── constants/                 # option keys (priorities, task types, lost reasons…), status colors
 ├── types/domain.ts            # API contracts shared by all modules
-├── InterceptorHelper.ts       # fetch wrapper: auth, request id, idempotency, error envelope, mock switch
+├── InterceptorHelper.ts       # fetch wrapper: JWT + refresh, X-Organization-ID, idempotency, errors, mock switch
+├── api/                       # backend adapter (endpoints + response mapping) and envelope helpers
 ├── router/                    # guard: session → onboarding → permission
 ├── store/                     # auth (user, organization, membership), theme
 ├── composables/               # useFetch/useMutate (TanStack Query), lookups, authorization, locale
@@ -80,7 +87,8 @@ Each module follows the same layout: `*.routes.ts`, `api/index.ts`, `components/
 | --- | --- |
 | [docs/PRD.md](docs/PRD.md) | Product scope, modules, acceptance criteria, release plan |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, frontend architecture, data flow, mock API |
-| [docs/API.md](docs/API.md) | REST API contract: conventions, every endpoint, errors |
+| [docs/INTEGRATION.md](docs/INTEGRATION.md) | **Backend integration**: setup, auth & tenant flow, endpoint map, verification status |
+| [docs/API.md](docs/API.md) | Original API design (the backend OpenAPI in `contracts/` is now authoritative) |
 | [docs/DATABASE.md](docs/DATABASE.md) | PostgreSQL schema (DDL), indexes, rules |
 | [docs/SECURITY.md](docs/SECURITY.md) | Roles & permissions, tenant isolation, n8n security, privacy |
 | [docs/N8N_WORKFLOWS.md](docs/N8N_WORKFLOWS.md) | Workflows A–E, step by step, retry & idempotency rules |

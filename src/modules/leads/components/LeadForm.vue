@@ -13,10 +13,9 @@ import useMutate from "@/composables/useMutate";
 import { newId } from "@/InterceptorHelper";
 import { useLocaleSettings } from "@/composables/useLocaleSettings.ts";
 import { useAuthorization } from "@/composables/useAuthorization.ts";
-import { useActiveMembers, useOptions, useSources, useStages, useTags } from "@/composables/useLookups.ts";
-import { useAuthStore } from "@/store/auth.ts";
+import { useActiveMembers, useCustomFields, useOptions, useSources, useStages, useTags } from "@/composables/useLookups.ts";
 import { P } from "@/config/permissions";
-import { CUSTOM_FIELDS_BY_INDUSTRY, PRIORITIES } from "@/constants/lead";
+import { PRIORITIES } from "@/constants/lead";
 import type { DuplicateMatch, Lead } from "@/types/domain";
 import { apiCheckDuplicates, apiCreateLead, apiUpdateLead } from "@/modules/leads/api";
 
@@ -26,15 +25,15 @@ const emit = defineEmits<{ (e: "saved", lead: Lead): void; (e: "close"): void }>
 const { t } = useLocaleSettings();
 const { can } = useAuthorization();
 const router = useRouter();
-const auth = useAuthStore();
 const isEdit = computed(() => !!props.lead);
 
-const { sourceOptions } = useSources();
+const { sources, sourceOptions } = useSources();
 const { stageOptions } = useStages();
 const { memberOptions } = useActiveMembers();
 const { tags: tagSuggestions } = useTags();
 const priorityOptions = useOptions("priority", PRIORITIES);
-const customFields = computed(() => CUSTOM_FIELDS_BY_INDUSTRY[auth.organization?.industry ?? "other"] ?? []);
+const { fields: customFields } = useCustomFields();
+const fieldLabel = (f: { key: string; label: string }) => f.label || t(`customFields.${f.key}`);
 
 const phoneOrEmail = (other: string) =>
     yup.string().trim().nullable().test("contact", t("validations.phoneOrEmail"), function (v) {
@@ -61,7 +60,8 @@ const initial = () => {
     phone: l?.phone ?? "",
     email: l?.email ?? "",
     company: l?.company ?? "",
-    sourceId: l?.source?.id ?? null,
+    // list rows from the API carry the source name only: resolve it to an id for the select
+    sourceId: l?.source?.id || sources.value.find((s) => s.name === l?.source?.name || s.key === l?.source?.key)?.id || null,
     campaign: l?.campaign ?? "",
     stageId: l?.stage?.id ?? null,
     ownerId: l?.owner?.id ?? null,
@@ -72,7 +72,14 @@ const initial = () => {
   };
 };
 
-const { handleSubmit, values, resetForm, setFieldError } = useForm<any>({ validationSchema: schema, initialValues: initial() });
+const { handleSubmit, values, resetForm, setFieldError, setFieldValue } = useForm<any>({ validationSchema: schema, initialValues: initial() });
+
+// sources can arrive after the dialog opens: resolve the lead's source name to an id then
+watch(sources, (list) => {
+  if (values.sourceId || !props.lead?.source) return;
+  const match = list.find((s) => s.name === props.lead!.source!.name || s.key === props.lead!.source!.key);
+  if (match) setFieldValue("sourceId", match.id);
+});
 
 /* ---------- duplicate detection while typing ---------- */
 const duplicates = ref<DuplicateMatch[]>([]);
@@ -95,6 +102,9 @@ watch(
 
 /* ---------- save ---------- */
 const idempotencyKey = ref(newId());
+// the API refuses an exact duplicate with 409; the user can confirm and save anyway (force)
+const duplicateBlocked = ref(false);
+let lastPayload: Record<string, any> | null = null;
 const { mutate, isPending } = useMutate({
   mutationKey: ["save-lead"],
   queryKey: ["leads"],
@@ -115,25 +125,57 @@ const onSubmit = handleSubmit((vals: any) => {
     tags: vals.tags ?? [],
     message: clean(vals.message),
     customFields: Object.fromEntries(
-        customFields.value.map((f) => [f.key, vals.customFields?.[f.key] === "" || vals.customFields?.[f.key] === undefined ? null : f.type === "number" ? Number(vals.customFields[f.key]) : vals.customFields[f.key]])
+        customFields.value.map((f) => {
+          const v = vals.customFields?.[f.key];
+          if (v === "" || v === undefined || v === null) return [f.key, null];
+          if (f.fieldType === "number") return [f.key, Number(v)];
+          if (f.fieldType === "boolean") return [f.key, v === true || v === "true"];
+          return [f.key, v];
+        })
     ),
   };
   if (!isEdit.value && vals.stageId) payload.stageId = vals.stageId;
   if (can(P.leadsAssign) && (!isEdit.value || vals.ownerId !== props.lead?.owner?.id)) payload.ownerId = clean(vals.ownerId);
 
+  save(payload);
+});
+
+const save = (payload: Record<string, any>) => {
+  lastPayload = payload;
   mutate(payload, {
     onSuccess: (res: any) => {
+      duplicateBlocked.value = false;
       toast.success(res?.message || t("messages.saved"));
       idempotencyKey.value = newId();
       resetForm({ values: initial() });
       emit("saved", res.data);
     },
-    onError: (err: any) => {
+    onError: async (err: any) => {
+      if (err?.status === 409 && !isEdit.value) {
+        duplicateBlocked.value = true;
+        try {
+          duplicates.value = (await apiCheckDuplicates({ email: payload.email, phone: payload.phone })).data;
+        } catch {
+          /* keep whatever was found while typing */
+        }
+        return;
+      }
+      if (err?.error?.message && err?.status && err.status !== 422 && err.status !== 400) toast.error(err.error.message);
       const details = err?.error?.details;
-      if (details && !Array.isArray(details)) Object.entries(details).forEach(([k, v]) => setFieldError(k, (v as string[])[0]));
+      const fieldMap: Record<string, string> = { fullName: "name", full_name: "name", notes: "message", sourceId: "sourceId" };
+      if (details && !Array.isArray(details)) {
+        Object.entries(details).forEach(([k, v]) => setFieldError(fieldMap[k] ?? k, ([] as any[]).concat(v)[0]));
+        if (!Object.keys(details).length && err?.error?.message) toast.error(err.error.message);
+      } else if (err?.error?.message) toast.error(err.error.message);
     },
   });
-});
+};
+
+const saveAnyway = () => {
+  if (!lastPayload) return;
+  idempotencyKey.value = newId(); // a new request, not a replay of the refused one
+  save({ ...lastPayload, force: true });
+};
 </script>
 
 <template>
@@ -144,9 +186,9 @@ const onSubmit = handleSubmit((vals: any) => {
     <InputTextField name="phone" type="tel" :label="t('fields.phone')" :placeholder="t('fields.phonePlaceholder')" />
     <InputTextField name="email" type="email" :label="t('fields.email')" :placeholder="t('fields.enterEmail')" />
 
-    <div v-if="duplicates.length" class="md:col-span-2 mb-4 rounded border border-[#E0A800]/40 bg-[#FFF9E9] p-3 text-sm" role="status">
-      <p class="font-semibold text-[#8A6700]">{{ t("leads.possibleDuplicate") }}</p>
-      <p class="text-xs text-[#8A6700] mb-2">{{ t("leads.duplicatePolicyHint") }}</p>
+    <div v-if="duplicates.length || duplicateBlocked" class="md:col-span-2 mb-4 rounded border border-[#E0A800]/40 bg-[#FFF9E9] p-3 text-sm" role="status">
+      <p class="font-semibold text-[#8A6700]">{{ duplicateBlocked ? t("leads.duplicateBlocked") : t("leads.possibleDuplicate") }}</p>
+      <p class="text-xs text-[#8A6700] mb-2">{{ duplicateBlocked ? t("leads.duplicateBlockedHint") : t("leads.duplicatePolicyHint") }}</p>
       <ul class="flex flex-col gap-1">
         <li v-for="d in duplicates" :key="d.lead.id ?? d.lead.name" class="flex items-center justify-between gap-2">
           <span class="text-black truncate">{{ d.lead.name }} <span class="text-xs text-neural-300">({{ d.matchedOn.map((m) => t(`fields.${m}`)).join(", ") }})</span></span>
@@ -155,6 +197,9 @@ const onSubmit = handleSubmit((vals: any) => {
           </button>
         </li>
       </ul>
+      <button v-if="duplicateBlocked" type="button" class="mt-3 h-8 px-3 rounded border border-[#8A6700]/50 text-xs font-medium text-[#8A6700] hover:bg-[#FFF3CC] disabled:opacity-50" :disabled="isPending" @click="saveAnyway">
+        {{ t("leads.createAnyway") }}
+      </button>
     </div>
 
     <InputTextField name="company" :label="t('fields.company')" :placeholder="t('fields.optional')" />
@@ -182,14 +227,37 @@ const onSubmit = handleSubmit((vals: any) => {
       <p class="md:col-span-2 text-sm font-semibold text-heading border-t border-line pt-4 mb-3">
         {{ t("leads.industryDetails") }} <span class="font-normal text-xs text-neural-300">({{ t("fields.optional") }})</span>
       </p>
-      <InputTextField
-          v-for="f in customFields"
-          :key="f.key"
-          :name="`customFields.${f.key}`"
-          :type="f.type === 'number' ? 'number' : 'text'"
-          :label="t(`customFields.${f.key}`)"
-          :placeholder="t('fields.optional')"
-      />
+      <template v-for="f in customFields" :key="f.key">
+        <SelectBox
+            v-if="f.fieldType === 'select' || f.fieldType === 'multi_select'"
+            :name="`customFields.${f.key}`"
+            :label="fieldLabel(f)"
+            :multi="f.fieldType === 'multi_select'"
+            :static-options="f.options.map((o) => ({ id: o, name: o }))"
+            option-label="name"
+            option-value="id"
+            :placeholder="t('fields.optional')"
+            :required="f.isRequired"
+        />
+        <SelectBox
+            v-else-if="f.fieldType === 'boolean'"
+            :name="`customFields.${f.key}`"
+            :label="fieldLabel(f)"
+            :multi="false"
+            :static-options="[{ id: 'true', name: t('fields.yes') }, { id: 'false', name: t('fields.no') }]"
+            option-label="name"
+            option-value="id"
+            :placeholder="t('fields.optional')"
+        />
+        <InputTextField
+            v-else
+            :name="`customFields.${f.key}`"
+            :type="f.fieldType === 'number' ? 'number' : f.fieldType === 'date' ? 'date' : 'text'"
+            :label="fieldLabel(f)"
+            :placeholder="t('fields.optional')"
+            :required="f.isRequired"
+        />
+      </template>
     </template>
 
     <div class="md:col-span-2">

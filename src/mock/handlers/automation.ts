@@ -28,7 +28,7 @@ function serializeRule(ctx: Ctx, a: any) {
   return {
     id: a.id, type: a.type, enabled: a.enabled, config: a.config, workflowId: a.workflowId,
     lastRunAt: last?.startedAt ?? null, lastRunStatus: last?.status ?? null,
-    runsLast7d: recent.length, failuresLast7d: recent.filter((r) => r.status === 'failed').length, updatedAt: a.updatedAt,
+    runCount: recent.length, failureCount: recent.filter((r) => r.status === 'failed').length, updatedAt: a.updatedAt,
   }
 }
 

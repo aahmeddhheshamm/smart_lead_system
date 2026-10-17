@@ -15,7 +15,8 @@ import FormSection from "@/components/form/FormSection.vue";
 import InputPasswordField from "@/components/form/InputPasswordField.vue";
 import MainButton from "@/components/buttons/MainButton.vue";
 import { fromNow } from "@/utils";
-import { apiChangePassword, apiRevokeSession, apiSessions } from "@/modules/auth/api";
+import { apiChangePassword, apiRevokeOtherSessions, apiRevokeSession, apiSessions } from "@/modules/auth/api";
+import { USE_MOCK } from "@/InterceptorHelper";
 import { usePasswordRules } from "@/modules/auth/composables/usePasswordRules.ts";
 
 const { t } = useLocaleSettings();
@@ -44,6 +45,11 @@ const onSubmit = handleSubmit((v: any) => {
 
 const { data: sessionsData } = useFetch({ queryKey: ["sessions"], queryFn: apiSessions });
 const sessions = computed(() => sessionsData.value?.data ?? []);
+const revokeOthers = async () => {
+  await apiRevokeOtherSessions();
+  toast.success(t("profile.othersRevoked"));
+  queryClient.invalidateQueries({ queryKey: ["sessions"] });
+};
 const revoke = async (id: string) => {
   await apiRevokeSession(id);
   toast.success(t("profile.sessionRevoked"));
@@ -75,7 +81,10 @@ const revoke = async (id: string) => {
 
       <section>
         <h3 class="text-base font-semibold mb-1">{{ t("profile.sessions") }}</h3>
-        <p class="text-sm text-neural-300 mb-3">{{ t("profile.sessionsHint") }}</p>
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <p class="text-sm text-neural-300">{{ t("profile.sessionsHint") }}</p>
+          <button v-if="!USE_MOCK && sessions.length > 1" type="button" class="text-xs text-errors-100 font-medium" @click="revokeOthers">{{ t("profile.signOutOthers") }}</button>
+        </div>
         <ul class="border border-line rounded divide-y divide-line">
           <li v-for="s in sessions" :key="s.id" class="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
             <span class="min-w-0">

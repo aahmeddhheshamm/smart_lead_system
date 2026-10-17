@@ -13,6 +13,10 @@
         :class="divClass"
     >
       <main-nav class="sticky top-0 z-10"  @collapse="collapseSidebar" />
+      <div v-if="auth.user && auth.user.emailVerified === false" class="bg-[#FFF9E9] text-[#8A6700] text-sm px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2" role="status">
+        <span>{{ $t("auth.verifyEmailBanner", { email: auth.user.email }) }}</span>
+        <button type="button" class="font-medium underline disabled:opacity-50" :disabled="resending" @click="resend">{{ $t("auth.resendVerification") }}</button>
+      </div>
       <div data-scrollbar id="main-scrollbar" tabindex="-1">
         <div class="bg-dashboardBg transition-all duration-500 min-h-[calc(100vh-3.75rem)]">
           <suspense>
@@ -38,6 +42,23 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import MainNav from './components/navbar/Index.vue'
 import MainSidebar from './components/sidebar/Index.vue'
+import { toast } from 'vue3-toastify'
+import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/store/auth.ts'
+import { apiResendVerification } from '@/modules/auth/api'
+
+const auth = useAuthStore()
+const { t } = useI18n()
+const resending = ref(false)
+const resend = async () => {
+  resending.value = true
+  try {
+    await apiResendVerification()
+    toast.success(t('auth.verificationSent'))
+  } finally {
+    resending.value = false
+  }
+}
 const { setTheme } = useThemeStore()
 const { currentTheme } = storeToRefs(useThemeStore())
 

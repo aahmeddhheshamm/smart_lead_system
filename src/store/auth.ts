@@ -1,21 +1,24 @@
 import { defineStore } from 'pinia'
-import type { CurrentUser, Membership, MeResponse, Organization } from '@/types/domain'
-import { apiLogout, getMe } from '@/modules/auth/api'
+import type { CurrentUser, Membership, MeResponse, Organization, OrganizationRef } from '@/types/domain'
+import { STORAGE } from '@/InterceptorHelper'
+import { apiLogout, apiSwitchOrganization, getMe } from '@/modules/auth/api'
 
 interface AuthState {
   token: string | null
   user: CurrentUser | null
   organization: Organization | null
   membership: Membership | null
+  organizations: OrganizationRef[]
   loaded: boolean
 }
 
 export const useAuthStore = defineStore('authUser', {
   state: (): AuthState => ({
-    token: localStorage.getItem('token'),
+    token: localStorage.getItem(STORAGE.token),
     user: null,
     organization: null,
     membership: null,
+    organizations: [],
     loaded: false,
   }),
 
@@ -31,11 +34,10 @@ export const useAuthStore = defineStore('authUser', {
   },
 
   actions: {
+    // The backend adapter has already stored the JWT pair; the mock hands back a `token`
     setSession(res: { token?: string } & MeResponse) {
-      if (res.token) {
-        this.token = res.token
-        localStorage.setItem('token', res.token)
-      }
+      if (res.token) localStorage.setItem(STORAGE.token, res.token)
+      this.token = localStorage.getItem(STORAGE.token)
       this.setMe(res)
     },
 
@@ -43,10 +45,11 @@ export const useAuthStore = defineStore('authUser', {
       this.user = me.user
       this.organization = me.organization
       this.membership = me.membership
+      this.organizations = me.organizations ?? []
       this.loaded = true
     },
 
-    // Loads /auth/me once per page load; the router guard awaits it before permission checks
+    // Loads the session once per page load; the router guard awaits it before permission checks
     async isAuth() {
       if (this.loaded) return true
       try {
@@ -56,6 +59,13 @@ export const useAuthStore = defineStore('authUser', {
       } catch {
         return false
       }
+    },
+
+    // Re-scopes every request to another organization (X-Organization-ID) and reloads the app state
+    async switchOrganization(id: string) {
+      const res = await apiSwitchOrganization(id)
+      this.setMe(res.data)
+      window.location.assign('/dashboard')
     },
 
     async logout() {
@@ -73,8 +83,10 @@ export const useAuthStore = defineStore('authUser', {
       this.user = null
       this.organization = null
       this.membership = null
+      this.organizations = []
       this.loaded = false
-      localStorage.removeItem('token')
+      localStorage.removeItem(STORAGE.token)
+      localStorage.removeItem(STORAGE.refresh)
       this.$router?.push({ name: 'login' })
     },
   },

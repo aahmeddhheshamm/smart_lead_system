@@ -12,7 +12,7 @@ import { apiPostponeTask } from "@/modules/tasks/api";
 
 const TYPE_ICONS: Record<string, string> = {
   call: "lucide:phone", email: "lucide:mail", meeting: "lucide:calendar-days", follow_up: "lucide:repeat",
-  send_proposal: "lucide:file-text", other: "lucide:check-square",
+  send_quote: "lucide:file-text", viewing: "lucide:house", whatsapp: "lucide:message-circle", other: "lucide:check-square",
 };
 
 const props = withDefaults(defineProps<{ task: Task; showLead?: boolean; canManage?: boolean }>(), { showLead: true, canManage: true });

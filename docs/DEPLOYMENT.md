@@ -29,7 +29,9 @@ Illustrative names. Set them per provider, and **never** commit real values or s
 ```bash
 # Web (this repo, build-time)
 VITE_APP_API_URL=https://api.example.com/api/v1/
+VITE_PUBLIC_API_URL=https://api.example.com/api/v1/
 VITE_USE_MOCK=false
+# dev only: VITE_DEV_PROXY_TARGET=https://<backend> (Vite proxies /api, needed for ngrok)
 
 # Backend
 DATABASE_URL=

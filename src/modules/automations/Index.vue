@@ -12,7 +12,8 @@ import { fromNow } from "@/utils";
 import { P } from "@/config/permissions";
 import { AUTOMATION_ICONS, AUTOMATION_TYPES } from "@/constants/lead";
 import type { AutomationRule } from "@/types/domain";
-import { apiAutomations, apiUpdateAutomation } from "@/modules/automations/api";
+import { apiAutomations, apiRunAutomationNow, apiUpdateAutomation } from "@/modules/automations/api";
+import { USE_MOCK } from "@/InterceptorHelper";
 import AutomationConfigModal from "@/modules/automations/components/AutomationConfigModal.vue";
 
 const { t } = useLocaleSettings();
@@ -43,17 +44,37 @@ const configure = (rule: AutomationRule) => {
   showConfig.value = true;
 };
 
+const running = ref<string | null>(null);
+const runNow = async (rule: AutomationRule) => {
+  running.value = rule.id;
+  try {
+    await apiRunAutomationNow(rule.id);
+    toast.success(t("automations.ranNow"));
+    ["automations", "automation-runs", "notifications", "tasks"].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+  } finally {
+    running.value = null;
+  }
+};
+
+// backend rules carry their own name/description; fall back to the built-in copy
+const nameOf = (rule: AutomationRule) => rule.name || t(`automations.types.${rule.type}.name`);
+const descriptionOf = (rule: AutomationRule) => rule.description || t(`automations.types.${rule.type}.description`);
+const SCHEDULED = ["first_response_sla", "stale_lead_follow_up", "task_reminder", "daily_report"];
+const generic = (c: Record<string, any>) =>
+    Object.entries(c).filter(([, v]) => ["number", "boolean", "string"].includes(typeof v)).slice(0, 3)
+        .map(([k, v]) => `${k}: ${typeof v === "boolean" ? (v ? "✓" : "✗") : v}`).join(" · ") || t("automations.summary.stop");
+
 // short, human summary of the current settings shown on each card
 const summary = (rule: AutomationRule) => {
   const c = rule.config ?? {};
   switch (rule.type) {
     case "lead_ingestion": return t("automations.summary.ingestion", { policy: t(`automations.config.policy.${c.dedupePolicy}`), fields: (c.matchOn ?? []).map((f: string) => t(`fields.${f}`)).join(" + ") });
-    case "lead_assignment": return t(`automations.config.strategies.${c.strategy}`);
-    case "first_response_sla": return t("automations.summary.sla", { minutes: c.minutes });
-    case "stale_lead_follow_up": return t("automations.summary.stale", { days: c.businessDays });
-    case "ai_classification": return t("automations.summary.ai", { pct: Math.round((c.minConfidence ?? 0.6) * 100) });
-    case "daily_report": return t("automations.summary.report", { hour: String(c.hour).padStart(2, "0") });
-    default: return t("automations.summary.stop");
+    case "lead_assignment": return c.strategy ? t(`automations.config.strategies.${c.strategy}`) : generic(c);
+    case "first_response_sla": return c.minutes ? t("automations.summary.sla", { minutes: c.minutes }) : generic(c);
+    case "stale_lead_follow_up": return c.businessDays ? t("automations.summary.stale", { days: c.businessDays }) : generic(c);
+    case "ai_classification": return c.minConfidence ? t("automations.summary.ai", { pct: Math.round(c.minConfidence * 100) }) : generic(c);
+    case "daily_report": return c.hour !== undefined ? t("automations.summary.report", { hour: String(c.hour).padStart(2, "0") }) : generic(c);
+    default: return generic(c);
   }
 };
 </script>
@@ -81,14 +102,14 @@ const summary = (rule: AutomationRule) => {
               <Icon :icon="AUTOMATION_ICONS[rule.type]" class="w-5 h-5" />
             </span>
             <div class="min-w-0">
-              <h2 class="text-base font-semibold">{{ t(`automations.types.${rule.type}.name`) }}</h2>
-              <p class="text-xs text-neural-300 mt-0.5">{{ t(`automations.types.${rule.type}.description`) }}</p>
+              <h2 class="text-base font-semibold">{{ nameOf(rule) }}</h2>
+              <p class="text-xs text-neural-300 mt-0.5">{{ descriptionOf(rule) }}</p>
             </div>
           </div>
           <ToggleSwitch
               :model-value="rule.enabled"
               :disabled="!can(P.automationsManage) || toggling === rule.id"
-              :aria-label="t('automations.toggle', { name: t(`automations.types.${rule.type}.name`) })"
+              :aria-label="t('automations.toggle', { name: nameOf(rule) })"
               @update:model-value="toggle(rule)"
           />
         </header>
@@ -97,16 +118,18 @@ const summary = (rule: AutomationRule) => {
 
         <dl class="grid grid-cols-3 gap-2 text-xs">
           <div><dt class="text-neural-300">{{ t("automations.lastRun") }}</dt><dd class="text-heading mt-0.5">{{ rule.lastRunAt ? fromNow(rule.lastRunAt) : t("automations.never") }}</dd></div>
-          <div><dt class="text-neural-300">{{ t("automations.runs7d") }}</dt><dd class="text-heading mt-0.5 tabular-nums">{{ rule.runsLast7d }}</dd></div>
-          <div><dt class="text-neural-300">{{ t("automations.failures7d") }}</dt><dd class="mt-0.5 tabular-nums" :class="rule.failuresLast7d ? 'text-errors-100 font-semibold' : 'text-heading'">{{ rule.failuresLast7d }}</dd></div>
+          <div><dt class="text-neural-300">{{ USE_MOCK ? t("automations.runs7d") : t("automations.runsTotal") }}</dt><dd class="text-heading mt-0.5 tabular-nums">{{ rule.runCount }}</dd></div>
+          <div><dt class="text-neural-300">{{ USE_MOCK ? t("automations.failures7d") : t("automations.failuresTotal") }}</dt><dd class="mt-0.5 tabular-nums" :class="rule.failureCount ? 'text-errors-100 font-semibold' : 'text-heading'">{{ rule.failureCount }}</dd></div>
         </dl>
+        <p v-if="rule.lastError" class="text-xs text-errors-100 bg-errors-100/10 rounded px-2 py-1 -mt-1">{{ rule.lastError }}</p>
 
         <footer class="flex items-center justify-between gap-2 pt-3 border-t border-line">
           <span class="flex items-center gap-2 text-xs text-neural-300">
             <StatusBadge v-if="rule.lastRunStatus" :status="rule.lastRunStatus" />
-            <code class="text-[11px]">{{ rule.workflowId }}</code>
+            <code v-if="rule.workflowId" class="text-[11px]">{{ rule.workflowId }}</code>
           </span>
           <span class="flex items-center gap-3">
+            <button v-if="!USE_MOCK && can(P.automationsManage) && rule.enabled && SCHEDULED.includes(rule.type)" type="button" class="text-xs text-primary-700 font-medium disabled:opacity-50" :disabled="running === rule.id" @click="runNow(rule)">{{ t("automations.runNow") }}</button>
             <router-link :to="{ name: 'automationRuns', query: { type: rule.type } }" class="text-xs text-primary-700 font-medium">{{ t("automations.viewRuns") }}</router-link>
             <button v-if="can(P.automationsManage) && rule.type !== 'stop_on_close'" type="button" class="text-xs text-primary-700 font-medium" @click="configure(rule)">{{ t("automations.configure") }}</button>
           </span>

@@ -19,8 +19,8 @@ const roles = computed(() => data.value?.data ?? []);
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       <div v-for="role in roles" :key="role.key" class="rounded border border-line p-3">
-        <p class="text-sm font-semibold text-heading">{{ t(`roles.${role.key}`) }} <span class="text-xs text-neural-300 font-normal">· {{ t("settings.membersCount", { count: role.members }) }}</span></p>
-        <p class="text-xs text-neural-300 mt-1">{{ t(`roleDescriptions.${role.key}`) }}</p>
+        <p class="text-sm font-semibold text-heading">{{ $te(`roles.${role.key}`) ? t(`roles.${role.key}`) : role.name ?? role.key }} <span class="text-xs text-neural-300 font-normal">· {{ t("settings.membersCount", { count: role.members }) }}</span></p>
+        <p v-if="$te(`roleDescriptions.${role.key}`)" class="text-xs text-neural-300 mt-1">{{ t(`roleDescriptions.${role.key}`) }}</p>
       </div>
     </div>
     <div class="overflow-x-auto border border-line rounded">
@@ -28,7 +28,7 @@ const roles = computed(() => data.value?.data ?? []);
         <thead class="bg-tableHeader">
           <tr>
             <th class="text-start">{{ t("settings.permission") }}</th>
-            <th v-for="role in roles" :key="role.key" class="text-center whitespace-nowrap">{{ t(`roles.${role.key}`) }}</th>
+            <th v-for="role in roles" :key="role.key" class="text-center whitespace-nowrap">{{ $te(`roles.${role.key}`) ? t(`roles.${role.key}`) : role.name ?? role.key }}</th>
           </tr>
         </thead>
         <tbody>

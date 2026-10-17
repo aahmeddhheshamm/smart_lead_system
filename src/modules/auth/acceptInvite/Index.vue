@@ -19,7 +19,8 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const rules = usePasswordRules();
-const token = computed(() => String(route.params.token));
+// /invite/:token (app link) or /accept-invite?token=… (backend email link)
+const token = computed(() => String(route.params.token || route.query.token || ""));
 
 const { data, isLoading, isError, error } = useFetch({
   queryKey: computed(() => ["invitation", token.value]),
@@ -27,17 +28,21 @@ const { data, isLoading, isError, error } = useFetch({
 });
 const invitation = computed(() => data.value?.data);
 
+// already signed in → the API accepts with the current account (must match the invited email)
+const signedIn = computed(() => !!authStore.token);
 const schema = computed(() =>
-    yup.object({
-      name: yup.string().trim().required(t("validations.required", { field: t("fields.fullName") })),
-      password: rules.password(),
-    })
+    signedIn.value
+        ? yup.object({})
+        : yup.object({
+          name: yup.string().trim().required(t("validations.required", { field: t("fields.fullName") })),
+          password: rules.password(),
+        })
 );
 const { handleSubmit } = useForm({ validationSchema: schema, initialValues: { name: "", password: "" } });
 const { mutate, isPending } = useMutate({ mutationKey: ["accept-invite"], mutationFn: (v: any) => apiAcceptInvitation(token.value, v) });
 
 const onSubmit = handleSubmit((values) => {
-  mutate(values, {
+  mutate(signedIn.value ? {} : values, {
     onSuccess: (res) => {
       // the new session belongs to the invited organization
       authStore.loaded = false;
@@ -60,8 +65,11 @@ const onSubmit = handleSubmit((values) => {
         {{ t("auth.invitedAs", { email: invitation.email, role: t(`roles.${invitation.role}`) }) }}
       </p>
       <form class="flex flex-col gap-1" novalidate @submit="onSubmit">
-        <InputTextField name="name" :label="t('fields.fullName')" :placeholder="t('fields.enterFullName')" required />
-        <InputPasswordField name="password" :label="t('fields.password')" :placeholder="t('fields.enterPassword')" required />
+        <template v-if="!signedIn">
+          <InputTextField name="name" :label="t('fields.fullName')" :placeholder="t('fields.enterFullName')" required />
+          <InputPasswordField name="password" :label="t('fields.password')" :placeholder="t('fields.enterPassword')" required />
+        </template>
+        <p v-else class="text-sm text-neural-300 mb-4">{{ t("auth.acceptAsCurrentUser", { email: authStore.user?.email ?? invitation.email }) }}</p>
         <MainButton class="w-full" text="auth.acceptInvitation" type="submit" :loading="isPending" />
       </form>
     </template>

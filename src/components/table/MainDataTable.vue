@@ -34,6 +34,10 @@ const props = defineProps({
   columns: { type: Array as PropType<any[]>, required: true },
   items: { type: Array, default: () => [] },
   listUrl: { type: String, default: "" },
+  // Optional data source (module API function) used instead of GET {listUrl}; must resolve to
+  // { data, pagination }. listUrl is still the cache key, so mutations that invalidate it refresh.
+  fetcher: { type: Function as PropType<(query: Record<string, any>) => Promise<any>>, default: null },
+  exporter: { type: Function as PropType<(query: Record<string, any>) => Promise<any>>, default: null },
 
   title: String,
   hasPagination: { type: Boolean, default: true },
@@ -109,11 +113,8 @@ const { data, isLoading, isSuccess, isError, refetch } = useFetch({
     listParams.value,
   ]),
   queryFn: async () => {
-    return InterceptorHelper.intercept(props.listUrl, undefined, {
-      page: page.value,
-      pageSize: perPage.value,
-      ...listParams.value,
-    });
+    const query = { page: page.value, pageSize: perPage.value, ...listParams.value };
+    return props.fetcher ? props.fetcher(query) : InterceptorHelper.intercept(props.listUrl, undefined, query);
   },
 });
 
@@ -121,7 +122,8 @@ const { data, isLoading, isSuccess, isError, refetch } = useFetch({
 
 const { isExporting, exportTable } = useExportTable(
     () => props.listUrl,
-    () => listParams.value
+    () => listParams.value,
+    props.exporter
 );
 
 /* ===================== SYNC DATA ===================== */

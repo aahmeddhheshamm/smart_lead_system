@@ -1,27 +1,57 @@
-import InterceptorHelper from "@/InterceptorHelper.ts";
-import type { AuditLog, Invitation, ItemResponse, LeadSource, ListResponse, Member, Organization, PipelineStage, Subscription } from "@/types/domain";
+import InterceptorHelper, { USE_MOCK } from "@/InterceptorHelper.ts";
+import * as backend from "@/api/backend";
+import type {
+    AuditLog, Invitation, ItemResponse, LeadSource, ListResponse, Member, Organization, PipelineStage, Plan, Subscription,
+} from "@/types/domain";
 
-export const apiOrganization = () => InterceptorHelper.get<ItemResponse<Organization>>("organizations/current");
-export const apiUpdateOrganization = (data: Partial<Organization>) => InterceptorHelper.patch<ItemResponse<Organization>>("organizations/current", data);
-export const apiCompleteOnboarding = () => InterceptorHelper.post<ItemResponse<Organization>>("organizations/current/complete-onboarding");
+export const apiOrganization = (): Promise<ItemResponse<Organization>> =>
+    USE_MOCK ? InterceptorHelper.get("organizations/current") : backend.organization.current().then((data) => ({ data }));
 
-export const apiMembers = (query: Record<string, any> = {}) => InterceptorHelper.get<ListResponse<Member>>("members", query);
-export const apiUpdateMember = (id: string, data: { role?: string; status?: string; specialties?: string[] }) =>
-    InterceptorHelper.patch<ItemResponse<Member>>(`members/${id}`, data);
+export const apiUpdateOrganization = (data: Partial<Organization>): Promise<ItemResponse<Organization>> =>
+    USE_MOCK ? InterceptorHelper.patch("organizations/current", data) : backend.organization.update(data).then((data) => ({ data }));
 
-export const apiInvitations = () => InterceptorHelper.get<{ data: Invitation[] }>("invitations");
-export const apiInvite = (data: { email: string; role: string }) =>
-    InterceptorHelper.post<ItemResponse<Invitation> & { debugInviteToken?: string }>("invitations", data);
-export const apiRevokeInvitation = (id: string) => InterceptorHelper.delete(`invitations/${id}`);
+// The API has no onboarding flag: the wizard is shown once right after sign-up
+export const apiCompleteOnboarding = (): Promise<ItemResponse<Organization>> =>
+    USE_MOCK ? InterceptorHelper.post("organizations/current/complete-onboarding") : apiOrganization();
 
-export const apiRoles = () => InterceptorHelper.get<{ data: Array<{ key: string; permissions: string[]; members: number }> }>("roles");
+export const apiMembers = (query: Record<string, any> = {}): Promise<ListResponse<Member>> =>
+    USE_MOCK ? InterceptorHelper.get("members", query) : backend.team.members(query);
 
-export const apiSaveStages = (stages: Array<Partial<PipelineStage>>) => InterceptorHelper.put<{ data: PipelineStage[] }>("pipeline-stages", { stages });
+export const apiUpdateMember = (id: string, data: { role?: string; status?: string; specialties?: string[] }): Promise<ItemResponse<Member>> =>
+    USE_MOCK ? InterceptorHelper.patch(`members/${id}`, data) : backend.team.updateMember(id, data);
 
-export const apiCreateSource = (data: { name: string; type: string }) => InterceptorHelper.post<ItemResponse<LeadSource>>("lead-sources", data);
-export const apiUpdateSource = (id: string, data: Partial<LeadSource>) => InterceptorHelper.patch<ItemResponse<LeadSource>>(`lead-sources/${id}`, data);
-export const apiDeleteSource = (id: string) => InterceptorHelper.delete(`lead-sources/${id}`);
+export const apiInvitations = (): Promise<{ data: Invitation[] }> =>
+    USE_MOCK ? InterceptorHelper.get("invitations") : backend.team.invitations();
 
-export const apiSubscription = () => InterceptorHelper.get<ItemResponse<Subscription>>("billing/subscription");
+export const apiInvite = (data: { email: string; role: string }): Promise<ItemResponse<Invitation> & { debugInviteToken?: string }> =>
+    USE_MOCK ? InterceptorHelper.post("invitations", data) : backend.team.invite(data.email, data.role);
 
-export const apiAuditLogs = (query: Record<string, any>) => InterceptorHelper.get<ListResponse<AuditLog>>("audit-logs", query);
+export const apiRevokeInvitation = (id: string) =>
+    USE_MOCK ? InterceptorHelper.delete(`invitations/${id}`) : backend.team.revokeInvitation(id);
+
+export const apiResendInvitation = (id: string) => (USE_MOCK ? Promise.resolve({}) : backend.team.resendInvitation(id));
+
+export const apiRoles = (): Promise<{ data: Array<{ key: string; name?: string; permissions: string[]; members: number }> }> =>
+    USE_MOCK ? InterceptorHelper.get("roles") : backend.team.roles();
+
+export const apiSaveStages = (stages: Array<Partial<PipelineStage>>): Promise<{ data: PipelineStage[] }> =>
+    USE_MOCK ? InterceptorHelper.put("pipeline-stages", { stages }) : backend.settings.saveStages(stages);
+
+export const apiCreateSource = (data: { name: string; type: string }): Promise<ItemResponse<LeadSource>> =>
+    USE_MOCK ? InterceptorHelper.post("lead-sources", data) : backend.settings.createSource(data);
+
+export const apiUpdateSource = (id: string, data: Partial<LeadSource>): Promise<ItemResponse<LeadSource>> =>
+    USE_MOCK ? InterceptorHelper.patch(`lead-sources/${id}`, data) : backend.settings.updateSource(id, data);
+
+export const apiDeleteSource = (id: string) =>
+    USE_MOCK ? InterceptorHelper.delete(`lead-sources/${id}`) : backend.settings.deleteSource(id);
+
+export const apiSubscription = (): Promise<ItemResponse<Subscription>> =>
+    USE_MOCK ? InterceptorHelper.get("billing/subscription") : backend.billing.subscription();
+
+export const apiPlans = (): Promise<{ data: Plan[] }> => (USE_MOCK ? Promise.resolve({ data: [] }) : backend.billing.plans());
+
+export const apiChangePlan = (planCode: string) => (USE_MOCK ? Promise.resolve({}) : backend.billing.changePlan(planCode));
+
+export const apiAuditLogs = (query: Record<string, any>): Promise<ListResponse<AuditLog>> =>
+    USE_MOCK ? InterceptorHelper.get("audit-logs", query) : backend.auditLogs(query);

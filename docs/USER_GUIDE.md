@@ -51,21 +51,21 @@
 
 ## Website form integration (for your web developer)
 
-Send each form submission to the webhook URL from **Integrations → Website form**:
+Send each form submission to the ingest URL from **Integrations → Website form** (`…/api/v1/ingest/<publicKey>`):
 
 ```bash
-BODY='{"name":"Ahmed Hassan","phone":"+201001234567","email":"ahmed@example.com","message":"Looking for an apartment","campaign":"Summer Launch"}'
-SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SIGNING_SECRET" -hex | sed 's/^.* //')
-curl -X POST "$WEBHOOK_URL" \
+BODY='{"name":"Ahmed Hassan","phone":"+201001234567","email":"ahmed@example.com","message":"Looking for an apartment","utm_campaign":"summer"}'
+TS=$(date +%s)
+SIG=$(printf '%s' "$TS.$BODY" | openssl dgst -sha256 -hmac "$SIGNING_SECRET" -hex | sed 's/^.* //')
+curl -X POST "$INGEST_URL" \
   -H "Content-Type: application/json" \
-  -H "X-Event-Id: $(uuidgen)" \
-  -H "X-Timestamp: $(date +%s)" \
-  -H "X-Signature: sha256=$SIG" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -H "X-LeadFlow-Signature: t=$TS,v1=$SIG" \
   -d "$BODY"
 ```
 
 - Send the request **from your server**, never from browser JavaScript (the secret must stay private).
-- Use a new `X-Event-Id` per submission. If you retry the same submission, reuse its id and it will not be created twice.
+- Use a new `Idempotency-Key` per submission. If you retry the same submission, reuse its key and it will not be created twice.
 - At least a name and a phone number or email are required.
 
 ## FAQ

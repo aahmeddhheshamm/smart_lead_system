@@ -14,7 +14,8 @@ import { useAuthStore } from "@/store/auth.ts";
 import { fromNow } from "@/utils";
 import { ASSIGNABLE_ROLES, P } from "@/config/permissions";
 import type { Member } from "@/types/domain";
-import { apiInvitations, apiInvite, apiMembers, apiRevokeInvitation, apiUpdateMember } from "@/modules/settings/api";
+import { apiInvitations, apiInvite, apiMembers, apiResendInvitation, apiRevokeInvitation, apiUpdateMember } from "@/modules/settings/api";
+import { USE_MOCK } from "@/InterceptorHelper";
 
 const { t } = useLocaleSettings();
 const { can } = useAuthorization();
@@ -56,6 +57,11 @@ const invite = async () => {
   } finally {
     inviting.value = false;
   }
+};
+const resend = async (id: string) => {
+  await apiResendInvitation(id);
+  toast.success(t("settings.invitationResent"));
+  refresh();
 };
 const revoke = async (id: string) => {
   await apiRevokeInvitation(id);
@@ -144,7 +150,7 @@ const saveSpecialties = async () => {
               <select v-if="canManage && m.user.id !== auth.userId && (m.role !== 'owner' || auth.role === 'owner')" :value="m.role" class="h-8 rounded border border-line bg-white px-2 text-sm text-black" :aria-label="t('fields.role')" @change="update(m, { role: ($event.target as HTMLSelectElement).value })">
                 <option v-for="r in roleOptions" :key="r" :value="r">{{ t(`roles.${r}`) }}</option>
               </select>
-              <span v-else>{{ t(`roles.${m.role}`) }}</span>
+              <span v-else>{{ $te(`roles.${m.role}`) ? t(`roles.${m.role}`) : m.roleName ?? m.role }}</span>
             </td>
             <td>
               <button v-if="canManage && m.role === 'sales_agent'" type="button" class="text-xs text-primary-700 text-start" @click="openSpecialties(m)">{{ m.specialties.length ? m.specialties.join(", ") : t("settings.addSpecialties") }}</button>
@@ -169,9 +175,10 @@ const saveSpecialties = async () => {
       <h3 class="text-sm font-semibold text-heading mb-2">{{ t("settings.pendingInvitations") }}</h3>
       <ul class="border border-line rounded divide-y divide-line">
         <li v-for="inv in pending" :key="inv.id" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-          <span>{{ inv.email }} · <span class="text-neural-300">{{ t(`roles.${inv.role}`) }}</span></span>
+          <span>{{ inv.email }} · <span class="text-neural-300">{{ $te(`roles.${inv.role}`) ? t(`roles.${inv.role}`) : inv.role }}</span></span>
           <span class="flex items-center gap-3 text-xs text-neural-300">
             {{ t("settings.expires", { when: fromNow(inv.expiresAt) }) }}
+            <button v-if="canManage && !USE_MOCK" type="button" class="text-primary-700" @click="resend(inv.id)">{{ t("settings.resend") }}</button>
             <button v-if="canManage" type="button" class="text-errors-100" @click="revoke(inv.id)">{{ t("settings.revoke") }}</button>
           </span>
         </li>

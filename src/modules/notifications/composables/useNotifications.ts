@@ -10,6 +10,12 @@ export const NOTIFICATION_ICONS: Record<string, string> = {
     lead_assigned: "lucide:user-plus",
     task_due: "lucide:alarm-clock",
     follow_up_overdue: "lucide:timer-off",
+    uncontacted_lead: "lucide:phone-missed",
+    unassigned_lead: "lucide:user-x",
+    import_finished: "lucide:file-check",
+    automation_failed: "lucide:workflow",
+    ai_review_needed: "lucide:sparkles",
+    daily_report: "lucide:mail",
     integration_failed: "lucide:plug-zap",
     import_failed_rows: "lucide:file-warning",
     automation_finished: "lucide:workflow",
@@ -37,7 +43,12 @@ export function useOpenNotification() {
             await apiMarkRead(n.id).catch(() => null);
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
         }
-        if (n.link?.name && router.hasRoute(n.link.name)) router.push({ name: n.link.name, params: n.link.params });
+        if (typeof n.link === "string") {
+            // backend links are in-app paths ("/leads/<id>"); ignore anything external
+            if (n.link.startsWith("/")) router.push(n.link);
+        } else if (n.link?.name && router.hasRoute(n.link.name)) {
+            router.push({ name: n.link.name, params: n.link.params });
+        }
     };
 }
 

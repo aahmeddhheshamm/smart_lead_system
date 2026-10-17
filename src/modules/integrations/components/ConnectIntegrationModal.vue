@@ -4,10 +4,10 @@ import { toast } from "vue3-toastify";
 import { useQueryClient } from "@tanstack/vue-query";
 import MainModal from "@/components/UI/modals/MainModal.vue";
 import MainButton from "@/components/buttons/MainButton.vue";
-import InterceptorHelper from "@/InterceptorHelper";
+import InterceptorHelper, { USE_MOCK } from "@/InterceptorHelper";
 import { useLocaleSettings } from "@/composables/useLocaleSettings.ts";
 import type { Integration } from "@/types/domain";
-import { apiConnect } from "@/modules/integrations/api";
+import { apiConnect, apiRotateSecret } from "@/modules/integrations/api";
 
 const props = defineProps<{ integration: Integration | null }>();
 const visible = defineModel<boolean>("visible", { default: false });
@@ -16,6 +16,8 @@ const queryClient = useQueryClient();
 
 const origins = ref("");
 const fromAddress = ref("");
+const emailProvider = ref("smtp");
+const apiKey = ref("");
 const secret = ref<string | null>(null);
 const saving = ref(false);
 const error = ref("");
@@ -26,10 +28,16 @@ watch(visible, (open) => {
   error.value = "";
   origins.value = (props.integration?.config?.allowedOrigins ?? []).join("\n");
   fromAddress.value = props.integration?.config?.fromAddress ?? "";
+  emailProvider.value = props.integration?.config?.provider ?? "smtp";
+  apiKey.value = "";
+  endpoint.value = currentEndpoint();
 });
 
 const provider = computed(() => props.integration?.provider);
-const endpoint = computed(() => (props.integration?.config?.endpoint ? `${InterceptorHelper.baseUrl}${props.integration.config.endpoint}` : ""));
+// backend: /api/v1/ingest/{publicKey} (absolute public URL); mock: webhooks/leads/{key}
+const currentEndpoint = () =>
+    props.integration?.endpointUrl || (props.integration?.config?.endpoint ? `${InterceptorHelper.baseUrl}${props.integration.config.endpoint}` : "");
+const endpoint = ref("");
 
 const connect = async () => {
   if (!provider.value) return;
@@ -40,10 +48,13 @@ const connect = async () => {
         provider.value === "website_form"
             ? { allowedOrigins: origins.value.split(/\s+/).map((s) => s.trim()).filter(Boolean) }
             : provider.value === "email"
-                ? { fromAddress: fromAddress.value.trim() }
+                ? { fromAddress: fromAddress.value.trim(), provider: emailProvider.value, apiKey: apiKey.value.trim() || undefined }
                 : {};
     const res = await apiConnect(provider.value, body);
     queryClient.invalidateQueries({ queryKey: ["integrations"] });
+    apiKey.value = "";
+    if (res.data?.endpointUrl) endpoint.value = res.data.endpointUrl;
+    else if (res.data?.config?.endpoint) endpoint.value = `${InterceptorHelper.baseUrl}${res.data.config.endpoint}`;
     if (res.secret) secret.value = res.secret;
     else {
       toast.success(t("integrations.connected"));
@@ -56,6 +67,19 @@ const connect = async () => {
   }
 };
 
+const rotating = ref(false);
+const rotate = async () => {
+  if (!provider.value) return;
+  rotating.value = true;
+  try {
+    const res = await apiRotateSecret(provider.value);
+    if (res.secret) secret.value = res.secret;
+    queryClient.invalidateQueries({ queryKey: ["integrations"] });
+  } finally {
+    rotating.value = false;
+  }
+};
+
 const copy = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
@@ -65,11 +89,22 @@ const copy = async (text: string) => {
   }
 };
 
-const snippet = computed(() => `curl -X POST "${endpoint.value}" \\
+// Signature scheme of the LeadFlow ingest endpoint:
+// X-LeadFlow-Signature: t=<unix>,v1=hex(HMAC_SHA256(secret, "<unix>.<raw body>"))
+const snippet = computed(() => USE_MOCK
+    ? `curl -X POST "${endpoint.value}" \\
   -H "Content-Type: application/json" \\
   -H "X-Event-Id: <unique id per submission>" \\
-  -H "X-Signature: <HMAC-SHA256 of the raw body with your secret>" \\
-  -d '{"name":"Ahmed Hassan","phone":"+201001234567","email":"ahmed@example.com","message":"…","campaign":"Summer Launch"}'`);
+  -H "X-Signature: <signing secret>" \\
+  -d '{"name":"Ahmed Hassan","phone":"+201001234567","email":"ahmed@example.com","message":"…"}'`
+    : `BODY='{"name":"Ahmed Hassan","phone":"+201001234567","email":"ahmed@example.com","message":"…","utm_campaign":"summer"}'
+TS=$(date +%s)
+SIG=$(printf '%s' "$TS.$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -X POST "${endpoint.value}" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: <unique id per submission>" \\
+  -H "X-LeadFlow-Signature: t=$TS,v1=$SIG" \\
+  -d "$BODY"`);
 </script>
 
 <template>
@@ -99,13 +134,33 @@ const snippet = computed(() => `curl -X POST "${endpoint.value}" \\
             <textarea v-model="origins" rows="3" class="rounded border border-line bg-white px-3 py-2 text-sm text-black" placeholder="https://www.example.com" dir="ltr" />
             <span class="text-xs text-neural-300">{{ t("integrations.allowedOriginsHint") }}</span>
           </label>
-          <p v-if="integration.status === 'connected'" class="text-xs text-[#8A6700]">{{ t("integrations.rotateWarning") }}</p>
+          <p v-if="integration.status === 'connected' && USE_MOCK" class="text-xs text-[#8A6700]">{{ t("integrations.rotateWarning") }}</p>
+          <div v-if="integration.status === 'connected' && endpoint" class="flex flex-col gap-1">
+            <span class="font-medium text-heading">{{ t("integrations.endpoint") }}</span>
+            <span class="flex gap-2"><code class="flex-1 rounded border border-line bg-gray-300 px-3 py-2 break-all">{{ endpoint }}</code><button type="button" class="details-btn-outline" @click="copy(endpoint)">{{ t("buttons.copy") }}</button></span>
+          </div>
+          <button v-if="integration.status === 'connected' && !USE_MOCK" type="button" class="self-start text-xs text-[#8A6700] underline disabled:opacity-50" :disabled="rotating" @click="rotate">{{ t("integrations.rotateSecret") }}</button>
         </template>
-        <label v-else-if="integration.provider === 'email'" class="flex flex-col gap-1.5">
-          <span class="font-medium text-heading">{{ t("integrations.fromAddress") }}</span>
-          <input v-model="fromAddress" type="email" class="h-10 rounded border border-line bg-white px-3 text-sm text-black" placeholder="no-reply@yourcompany.com" dir="ltr" />
-          <span class="text-xs text-neural-300">{{ t("integrations.emailHint") }}</span>
-        </label>
+        <template v-else-if="integration.provider === 'email'">
+          <label class="flex flex-col gap-1.5">
+            <span class="font-medium text-heading">{{ t("integrations.fromAddress") }}</span>
+            <input v-model="fromAddress" type="email" class="h-10 rounded border border-line bg-white px-3 text-sm text-black" placeholder="no-reply@yourcompany.com" dir="ltr" />
+            <span class="text-xs text-neural-300">{{ t("integrations.emailHint") }}</span>
+          </label>
+          <template v-if="!USE_MOCK">
+            <label class="flex flex-col gap-1.5">
+              <span class="font-medium text-heading">{{ t("integrations.emailProvider") }}</span>
+              <select v-model="emailProvider" class="h-10 rounded border border-line bg-white px-2 text-sm text-black">
+                <option v-for="p in ['smtp', 'sendgrid', 'mailgun', 'postmark', 'ses', 'resend']" :key="p" :value="p">{{ p }}</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1.5">
+              <span class="font-medium text-heading">{{ t("integrations.apiKey") }}</span>
+              <input v-model="apiKey" type="password" autocomplete="off" class="h-10 rounded border border-line bg-white px-3 text-sm text-black" :placeholder="integration.status === 'connected' ? t('integrations.apiKeyKeep') : ''" dir="ltr" />
+              <span class="text-xs text-neural-300">{{ t("integrations.apiKeyHint") }}</span>
+            </label>
+          </template>
+        </template>
         <p v-else class="text-neural-300">{{ t("integrations.genericConnect") }}</p>
 
         <ul class="text-xs text-neural-300 list-disc ps-5 flex flex-col gap-1">

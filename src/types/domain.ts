@@ -26,17 +26,34 @@ export type RoleKey = 'platform_admin' | 'owner' | 'admin' | 'sales_manager' | '
 
 export type MemberStatus = 'active' | 'inactive' | 'invited'
 
+export interface LeadSettings {
+  dedupMatchFields: Array<'email' | 'phone'>
+  dedupAction: 'update' | 'skip' | 'flag'
+  requiredFields: string[]
+  lostReasons: string[]
+  defaultCountry: string
+}
+
 export interface Organization {
   id: ID
   name: string
-  industry: 'real_estate' | 'clinic' | 'agency' | 'services' | 'other'
+  industry: 'real_estate' | 'clinic' | 'agency' | 'other'
   timezone: string
   locale: 'en' | 'ar'
   currency: string
   businessHours: { start: string; end: string; days: number[] }
   onboardingCompleted: boolean
   planId: string
+  // backend-only settings (dedupe policy, lost reasons…); absent in mock mode
+  leadSettings?: LeadSettings | null
   createdAt: string
+}
+
+// An organization the signed-in user belongs to (organization switcher)
+export interface OrganizationRef {
+  id: ID
+  name: string
+  role: RoleKey | string
 }
 
 export interface CurrentUser {
@@ -59,12 +76,17 @@ export interface MeResponse {
   user: CurrentUser
   organization: Organization
   membership: Membership
+  organizations?: OrganizationRef[]
 }
 
 export interface Member {
   id: ID
   user: UserRef
   role: RoleKey
+  roleId?: ID
+  roleName?: string
+  isAvailable?: boolean
+  title?: string
   status: MemberStatus
   specialties: string[]
   lastActiveAt: string | null
@@ -75,6 +97,7 @@ export interface Invitation {
   id: ID
   email: string
   role: RoleKey
+  inviteLink?: string | null
   status: 'pending' | 'accepted' | 'revoked' | 'expired'
   expiresAt: string
   invitedBy: UserRef
@@ -109,12 +132,28 @@ export interface PipelineStage {
 
 export interface LeadSource {
   id: ID
+  key?: string
   name: string
-  type: 'website' | 'manual' | 'import' | 'ads' | 'referral' | 'email' | 'whatsapp' | 'other'
+  type: 'website' | 'ads' | 'social' | 'referral' | 'phone' | 'walk_in' | 'import' | 'api' | 'other'
   active: boolean
 }
 
-export type AiStatus = 'suggested' | 'needs_review' | 'confirmed' | 'rejected'
+export interface Tag {
+  id: ID
+  name: string
+  color?: string
+}
+
+export interface CustomFieldDefinition {
+  id: ID
+  key: string
+  label: string
+  fieldType: 'text' | 'number' | 'select' | 'multi_select' | 'date' | 'boolean'
+  options: string[]
+  isRequired: boolean
+}
+
+export type AiStatus = 'pending' | 'suggested' | 'needs_review' | 'confirmed' | 'rejected'
 
 export interface LeadAiInsights {
   status: AiStatus
@@ -130,6 +169,8 @@ export interface LeadAiInsights {
   model: string
   generatedAt: string
   reviewedBy?: UserRef | null
+  // backend: one insight per kind; the panel reviews all of them together
+  insightIds?: ID[]
 }
 
 export interface Lead {
@@ -140,15 +181,18 @@ export interface Lead {
   company: string | null
   source: LeadSource | null
   campaign: string | null
-  stage: Pick<PipelineStage, 'id' | 'name' | 'type' | 'color'>
+  stage: Pick<PipelineStage, 'id' | 'name' | 'type' | 'color'> & { key?: string }
   owner: UserRef | null
   priority: Priority
   tags: string[]
+  tagRefs?: Tag[]
   message: string | null
   customFields: Record<string, string | number | null>
   lastContactedAt: string | null
   nextFollowUpAt: string | null
   doNotContact: boolean
+  needsReview?: boolean
+  marketingConsent?: boolean
   lostReason: string | null
   wonAt: string | null
   lostAt: string | null
@@ -190,7 +234,7 @@ export interface DuplicateMatch {
 
 /* ===================== Tasks ===================== */
 
-export type TaskType = 'call' | 'email' | 'meeting' | 'follow_up' | 'send_proposal' | 'other'
+export type TaskType = 'call' | 'email' | 'meeting' | 'follow_up' | 'send_quote' | 'viewing' | 'whatsapp' | 'other'
 export type TaskStatus = 'open' | 'completed' | 'cancelled'
 
 export interface Task {
@@ -217,20 +261,25 @@ export type AutomationType =
   | 'lead_assignment'
   | 'first_response_sla'
   | 'stale_lead_follow_up'
+  | 'stop_on_reply'
   | 'stop_on_close'
+  | 'task_reminder'
   | 'ai_classification'
   | 'daily_report'
 
 export interface AutomationRule {
   id: ID
   type: AutomationType
+  name?: string
+  description?: string
   enabled: boolean
   config: Record<string, any>
-  workflowId: string // fixed n8n workflow id allowed by the backend
+  workflowId: string // fixed n8n workflow id allowed by the backend ('' when not exposed)
   lastRunAt: string | null
   lastRunStatus: RunStatus | null
-  runsLast7d: number
-  failuresLast7d: number
+  lastError?: string | null
+  runCount: number
+  failureCount: number
   updatedAt: string
 }
 
@@ -238,7 +287,7 @@ export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped
 
 export interface AutomationRun {
   id: ID
-  rule: Pick<AutomationRule, 'id' | 'type'>
+  rule: (Pick<AutomationRule, 'id' | 'type'> & { name?: string }) | null
   status: RunStatus
   trigger: string
   lead: Pick<Lead, 'id' | 'name'> | null
@@ -246,6 +295,9 @@ export interface AutomationRun {
   attempt: number
   steps: Array<{ name: string; status: RunStatus; message?: string; durationMs: number }>
   error: string | null
+  input?: Record<string, any> | null
+  output?: Record<string, any> | null
+  durationMs?: number | null
   startedAt: string
   finishedAt: string | null
 }
@@ -256,6 +308,7 @@ export type IntegrationProvider =
   | 'website_form'
   | 'email'
   | 'csv_import'
+  | 'api'
   | 'google_sheets'
   | 'external_crm'
   | 'calendar'
@@ -268,6 +321,8 @@ export interface Integration {
   status: 'connected' | 'disconnected' | 'error' | 'expired' | 'coming_soon'
   priority: 'core' | 'later' | 'future'
   config: Record<string, any> // never contains secrets, only masked previews
+  displayName?: string
+  endpointUrl?: string | null
   lastSyncAt: string | null
   lastError: string | null
   eventsLast7d: number
@@ -279,9 +334,15 @@ export type NotificationType =
   | 'lead_assigned'
   | 'task_due'
   | 'follow_up_overdue'
+  | 'uncontacted_lead'
+  | 'unassigned_lead'
   | 'integration_failed'
   | 'import_failed_rows'
+  | 'import_finished'
   | 'automation_finished'
+  | 'automation_failed'
+  | 'ai_review_needed'
+  | 'daily_report'
   | 'usage_limit'
 
 export interface AppNotification {
@@ -289,20 +350,30 @@ export interface AppNotification {
   type: NotificationType
   title: string
   body: string
-  link: { name: string; params?: Record<string, string> } | null
+  // named route (mock) or an in-app path such as "/leads/<id>" (backend)
+  link: { name: string; params?: Record<string, string> } | string | null
   readAt: string | null
   createdAt: string
 }
 
-export type NotificationPreferences = Record<NotificationType, { inApp: boolean; email: boolean }>
+export type NotificationPreferences = Partial<Record<NotificationType, { inApp: boolean; email: boolean }>>
 
 /* ===================== Billing & audit ===================== */
 
+export interface Plan {
+  id: string
+  code: string
+  name: string
+  priceMonthly: number
+  currency: string
+  limits: Record<string, number>
+}
+
 export interface Subscription {
-  plan: { id: string; name: string; priceMonthly: number; currency: string }
+  plan: { id: string; code?: string; name: string; priceMonthly: number; currency: string }
   status: 'trialing' | 'active' | 'past_due' | 'cancelled'
   currentPeriodEnd: string
-  usage: Array<{ key: 'leads' | 'members' | 'automation_runs' | 'ai_requests'; used: number; limit: number }>
+  usage: Array<{ key: string; used: number; limit: number }>
 }
 
 export interface AuditLog {
@@ -359,7 +430,7 @@ export interface ImportPreviewRow {
 
 export interface ImportJob {
   id: ID
-  status: 'processing' | 'completed' | 'failed'
+  status: 'preview' | 'processing' | 'completed' | 'completed_with_errors' | 'failed' | 'canceled'
   fileName: string
   totalRows: number
   created: number

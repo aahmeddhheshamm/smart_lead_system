@@ -106,7 +106,7 @@ export function createOrganizationRows(db: MockDb, org: Row) {
   db.organizations.push(org)
   DEFAULT_STAGES.forEach((s, i) => db.stages.push({ id: uid('stg'), organizationId: org.id, position: i, ...structuredClone(s) }))
   ;[
-    ['Website', 'website'], ['Facebook Ads', 'ads'], ['Referral', 'referral'], ['CSV Import', 'import'], ['Walk-in / Phone', 'manual'],
+    ['Website', 'website'], ['Facebook Ads', 'ads'], ['Referral', 'referral'], ['CSV Import', 'import'], ['Walk-in / Phone', 'walk_in'],
   ].forEach(([name, type]) => db.sources.push({ id: uid('src'), organizationId: org.id, name, type, active: true }))
   DEFAULT_AUTOMATIONS.forEach((a) => db.automations.push({ id: uid('aut'), organizationId: org.id, updatedAt: nowIso(), ...structuredClone(a) }))
   DEFAULT_INTEGRATIONS.forEach((i) =>
@@ -237,7 +237,7 @@ export function seed(): MockDb {
       db.tasks.push({
         id: uid('tsk'), organizationId: orgA.id, leadId: lead.id, assigneeId: ownerId,
         title: pick(['Call to qualify budget', 'Send brochure and price list', 'Confirm viewing appointment', 'Follow up on proposal']),
-        type: pick(['call', 'email', 'meeting', 'follow_up', 'send_proposal']), status: 'open', priority: lead.priority,
+        type: pick(['call', 'email', 'meeting', 'follow_up', 'send_quote']), status: 'open', priority: lead.priority,
         dueAt: due.toISOString(), outcome: null, notes: null, automated: r() < 0.3, completedAt: null, createdAt,
       })
       lead.nextFollowUpAt = due.toISOString()

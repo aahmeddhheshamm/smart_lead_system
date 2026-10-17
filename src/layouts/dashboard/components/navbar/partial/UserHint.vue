@@ -29,8 +29,23 @@ const auth = useAuthStore();
           <div class="min-w-0">
             <p class="text-sm font-semibold text-heading truncate">{{ auth.username }}</p>
             <p class="text-xs text-neural-300 truncate">{{ auth.user?.email }}</p>
-            <p class="text-xs text-primary-700 mt-0.5">{{ $t(`roles.${auth.role}`) }} · {{ auth.organization?.name }}</p>
+            <p class="text-xs text-primary-700 mt-0.5">{{ $te(`roles.${auth.role}`) ? $t(`roles.${auth.role}`) : auth.role }} · {{ auth.organization?.name }}</p>
           </div>
+        </div>
+        <div v-if="auth.organizations.length > 1" class="border-b border-line py-1">
+          <p class="px-4 pt-1 pb-1 text-[11px] uppercase tracking-wide text-neural-300">{{ $t("navbar.switchOrganization") }}</p>
+          <MenuItem v-for="org in auth.organizations" :key="org.id" v-slot="{ active }">
+            <button
+                type="button"
+                class="headlessui-menu-item w-full text-start flex items-center justify-between gap-2"
+                :class="{ '!text-primary-700 bg-primary-50': active }"
+                :disabled="org.id === auth.organization?.id"
+                @click="auth.switchOrganization(org.id)"
+            >
+              <span class="truncate">{{ org.name }}</span>
+              <span v-if="org.id === auth.organization?.id" class="text-[10px] text-primary-700">✓</span>
+            </button>
+          </MenuItem>
         </div>
         <MenuItem v-slot="{ active, close }">
           <router-link :to="{ name: 'profile' }" class="headlessui-menu-item block" :class="{ '!text-primary-700 bg-primary-50': active }" @click="close">
