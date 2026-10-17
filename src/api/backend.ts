@@ -7,7 +7,7 @@
 // board, insights, integrations, dashboard, reports, billing) are mapped defensively and call
 // `expectShape` so a mismatch shows up as a console warning in development.
 
-import InterceptorHelper, { STORAGE, newId } from '@/InterceptorHelper'
+import InterceptorHelper, { ENV, STORAGE, newId } from '@/InterceptorHelper'
 import { P, ROLE_PERMISSIONS } from '@/config/permissions'
 import type {
   AppNotification, AuditLog, AutomationRule, AutomationRun, CurrentUser, CustomFieldDefinition, DashboardSummary,
@@ -233,9 +233,32 @@ const toUser = (u: any): CurrentUser => ({
 })
 
 const ALL_PERMISSIONS = Object.values(P) as string[]
+
+// Backend permission names → the keys the UI checks (src/config/permissions.ts).
+// The backend keys are kept too, so nothing is lost; the API still authorizes every request.
+const PERMISSION_ALIASES: Record<string, string[]> = {
+  'org.manage': [P.settingsManage],
+  'settings.lead_fields': [P.settingsManage],
+  'roles.manage': [P.membersManage],
+  'tasks.manage_all': [P.tasksManage, P.tasksViewAll],
+  'tasks.view_all': [P.tasksViewAll, P.tasksManage],
+  'tasks.manage_own': [P.tasksManage],
+  'tasks.manage': [P.tasksManage],
+  'reports.view_team': [P.reportsView],
+  'billing.view': [],
+}
+
 function normalizePermissions(raw: any): string[] {
   const list = asArray(raw, 'permissions').map((p: any) => (typeof p === 'string' ? p : p?.key ?? p?.code ?? p?.codename)).filter(Boolean)
-  return list.includes('*') ? ALL_PERMISSIONS : list
+  if (list.includes('*')) return ALL_PERMISSIONS
+  const out = new Set<string>(list)
+  for (const key of list) {
+    for (const alias of PERMISSION_ALIASES[key] ?? []) out.add(alias)
+    // agents can always work their own tasks when they can work their own leads
+    if (key.startsWith('tasks.')) out.add(P.tasksManage)
+  }
+  if (out.has(P.leadsViewOwn) && out.has(P.leadsUpdate)) out.add(P.tasksManage)
+  return [...out]
 }
 
 /* ============================== session ============================== */
@@ -250,63 +273,84 @@ function storeTokens(res: any) {
   return data
 }
 
-// Builds MeResponse from /auth/me + /organizations + /organizations/current.
-// The active tenant is the last one used on this device, else the first membership.
-export async function loadSession(): Promise<MeResponse> {
-  const meRaw = unwrap(await api.get('auth/me', {}, silent))
-  expectShape('GET auth/me', meRaw, 'user', 'email', 'memberships')
-  const user = meRaw?.user ?? meRaw
+type MembershipRef = OrganizationRef & { status: string; roleName?: string; permissions: string[]; membershipId?: string }
 
-  const orgsRaw = await api.get('organizations', {}, silent).catch(() => null)
-  let items = asArray(unwrap(orgsRaw), 'organizations', 'memberships')
-  if (!items.length) items = asArray(meRaw, 'memberships', 'organizations')
-  const refs: Array<OrganizationRef & { _raw: any }> = items.map((it: any) => {
-    const org = it.organization ?? it
-    const role = it.role ?? org.role ?? it.membership?.role
-    return { id: org.id, name: org.name, role: typeof role === 'string' ? role : role?.key ?? '', _raw: it }
-  }).filter((r) => r.id)
-  if (!refs.length) throw { error: { code: 'no_organization', message: 'This account is not a member of any organization.' } }
+// Accepts both membership shapes the API returns:
+//   flat   { organizationId, organizationName, organizationStatus, roleId, roleKey, roleName, permissions }  (login, auth/me)
+//   nested { organization: { id, name }, role: { key, permissions } }  /  plain organization { id, name, role }
+function toMembershipRef(it: any): MembershipRef {
+  const org = it.organization && typeof it.organization === 'object' ? it.organization : null
+  const role = it.role && typeof it.role === 'object' ? it.role : null
+  const flat = it.organizationId !== undefined
+  return {
+    id: flat ? it.organizationId : org?.id ?? it.id,
+    name: it.organizationName ?? org?.name ?? it.name ?? '',
+    role: it.roleKey ?? role?.key ?? (typeof it.role === 'string' ? it.role : '') ?? '',
+    roleName: it.roleName ?? role?.name,
+    status: it.organizationStatus ?? org?.status ?? it.status ?? 'active',
+    permissions: normalizePermissions(it.permissions ?? role?.permissions ?? []),
+    membershipId: flat || org ? it.id : undefined,
+  }
+}
+
+// Builds MeResponse. `seed` is the login/register/accept response ({ user, memberships, tokens }),
+// so a fresh sign-in needs no extra round trip for the membership list.
+// The active tenant is the last one used on this device, else the first active membership.
+export async function loadSession(seed?: any): Promise<MeResponse> {
+  let user = seed?.user
+  let items = asArray(seed, 'memberships')
+  if (!user || !items.length) {
+    const meRaw = unwrap(await api.get('auth/me', {}, silent))
+    expectShape('GET auth/me', meRaw, 'user', 'email', 'memberships')
+    user = meRaw?.user ?? meRaw
+    items = asArray(meRaw, 'memberships', 'organizations')
+  }
+  if (!items.length) items = asArray(unwrap(await api.get('organizations', {}, silent).catch(() => null)), 'organizations', 'memberships')
+
+  const refs = items.map(toMembershipRef).filter((r) => r.id)
+  const usable = refs.filter((r) => !['suspended', 'closed', 'canceled', 'cancelled'].includes(r.status))
+  if (!usable.length) {
+    throw {
+      error: {
+        code: 'no_organization',
+        message: refs.length ? 'Your organization is not active. Contact support.' : 'This account is not a member of any organization.',
+      },
+    }
+  }
 
   const saved = localStorage.getItem(STORAGE.org)
-  const chosen = refs.find((r) => r.id === saved) ?? refs[0]
+  const chosen = usable.find((r) => r.id === saved) ?? usable[0]
   localStorage.setItem(STORAGE.org, chosen.id)
 
-  const cur = unwrap(await api.get('organizations/current', {}, silent))
-  expectShape('GET organizations/current', cur, 'id', 'organization')
-  const orgRaw = cur?.organization ?? cur
-  const membershipRaw = cur?.membership ?? cur?.myMembership ?? chosen._raw.membership ?? (chosen._raw.role ? chosen._raw : null)
-  const roleObj = membershipRaw?.role ?? cur?.role ?? chosen._raw.role
-  const roleKey = (typeof roleObj === 'string' ? roleObj : roleObj?.key) || chosen.role || 'sales_agent'
+  // full organization settings (timezone, business hours, lead rules); the membership is enough to continue
+  const cur = await api.get('organizations/current', {}, silent).then(unwrap).catch(() => null)
+  if (cur) expectShape('GET organizations/current', cur, 'id', 'organization')
+  const orgRaw = cur?.organization ?? cur ?? { id: chosen.id, name: chosen.name }
+  if (!orgRaw.id) orgRaw.id = chosen.id
 
-  let permissions = normalizePermissions(roleObj?.permissions ?? cur?.permissions ?? membershipRaw?.permissions ?? chosen._raw.permissions)
-  if (!permissions.length) {
-    // last resort: read my own membership from the members list (needs members.view)
-    const mine = await api.get('members/', { search: user.email, page_size: 20 }, silent).catch(() => null)
-    const m = asArray(mine).find((x: any) => x.user?.id === user.id)
-    permissions = normalizePermissions(m?.role?.permissions)
-  }
-  if (!permissions.length) permissions = (ROLE_PERMISSIONS as any)[roleKey] ?? []
+  let permissions = chosen.permissions
+  if (!permissions.length) permissions = normalizePermissions(cur?.membership?.role?.permissions ?? cur?.permissions)
+  if (!permissions.length) permissions = (ROLE_PERMISSIONS as any)[chosen.role] ?? []
 
   return {
     user: toUser(user),
     organization: toOrganization(orgRaw),
-    membership: { id: membershipRaw?.id ?? '', role: roleKey as any, permissions, status: 'active' },
-    organizations: refs.map(({ _raw, ...r }) => r),
+    membership: { id: chosen.membershipId ?? '', role: (chosen.role || 'sales_agent') as any, permissions, status: 'active' },
+    organizations: usable.map(({ id, name, role }) => ({ id, name, role })),
   }
 }
 
 export const auth = {
   async login(email: string, password: string) {
-    storeTokens(await api.post('auth/login', { email, password }, silent))
-    return loadSession()
+    return loadSession(storeTokens(await api.post('auth/login', { email, password }, silent)))
   },
   async register(b: { name: string; email: string; password: string; organizationName: string; industry: string; timezone: string; locale: string; phone?: string }) {
     localStorage.removeItem(STORAGE.org)
-    storeTokens(await api.post('auth/register', {
+    const data = storeTokens(await api.post('auth/register', {
       fullName: b.name, email: b.email, password: b.password, organizationName: b.organizationName,
       industry: b.industry, timezone: b.timezone, language: b.locale, ...(b.phone ? { phone: b.phone } : {}),
     }))
-    return loadSession()
+    return loadSession(data)
   },
   async logout() {
     const refresh = localStorage.getItem(STORAGE.refresh)
@@ -337,9 +381,9 @@ export const auth = {
   },
   async acceptInvitation(token: string, b: { name?: string; password?: string }) {
     const data = storeTokens(await api.post('invitations/accept', { token, fullName: b.name, password: b.password }))
-    const orgId = data.organization?.id ?? data.membership?.organization?.id
+    const orgId = data.organization?.id ?? data.organizationId ?? data.membership?.organizationId ?? data.membership?.organization?.id
     if (orgId) localStorage.setItem(STORAGE.org, orgId)
-    return loadSession()
+    return loadSession(data)
   },
   switchOrganization(id: string) {
     localStorage.setItem(STORAGE.org, id)
@@ -904,7 +948,7 @@ const CATALOG: Array<{ provider: IntegrationProvider; priority: Integration['pri
 
 // Public ingest URL for website developers (the browser may talk to the API through a dev proxy)
 export const publicApiBase = () => {
-  const base = import.meta.env.VITE_PUBLIC_API_URL || InterceptorHelper.baseUrl
+  const base = ENV.VITE_PUBLIC_API_URL || InterceptorHelper.baseUrl
   return new URL(base, window.location.origin).toString().replace(/\/?$/, '/')
 }
 

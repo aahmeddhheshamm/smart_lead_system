@@ -12,7 +12,10 @@ export type RequestOptions = RequestInit & {
   _retried?: boolean
 }
 
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+// import.meta.env only exists under Vite; tests run these modules in plain Node
+export const ENV: Record<string, any> = (import.meta as any).env ?? {}
+
+export const USE_MOCK = ENV.VITE_USE_MOCK === 'true'
 
 export const newId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -28,7 +31,7 @@ const AUTH_PATHS = ['auth/login', 'auth/register', 'auth/refresh', 'auth/passwor
 let refreshing: Promise<boolean> | null = null
 
 export default class InterceptorHelper {
-  static baseUrl: string = import.meta.env.VITE_APP_API_URL || 'http://localhost:8000/api/v1/'
+  static baseUrl: string = ENV.VITE_APP_API_URL || 'http://localhost:8000/api/v1/'
 
   static async interceptRequest(options: RequestOptions = {}): Promise<RequestInit> {
     const token = localStorage.getItem(STORAGE.token)

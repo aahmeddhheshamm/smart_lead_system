@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test:mock": "tsx --tsconfig tsconfig.app.json tests/mock-api.smoke.ts",
     "test:contract": "tsx tests/backend-contract.check.ts",
-    "contract:update": "node -e \"fetch(process.env.API_SCHEMA_URL,{headers:{'ngrok-skip-browser-warning':'1',Accept:'application/json'}}).then(r=>r.text()).then(t=>require('fs').writeFileSync('contracts/leadflow-openapi.json',t))\""
+    "contract:update": "node -e \"fetch(process.env.API_SCHEMA_URL,{headers:{'ngrok-skip-browser-warning':'1',Accept:'application/json'}}).then(r=>r.text()).then(t=>require('fs').writeFileSync('contracts/leadflow-openapi.json',t))\"",
+    "test:session": "tsx --tsconfig tsconfig.app.json tests/backend-session.check.ts"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",

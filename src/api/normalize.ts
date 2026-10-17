@@ -57,7 +57,7 @@ const warned = new Set<string>()
 // Dev-only hint when an undocumented response doesn't look like what the mapper expects.
 // Check the browser console after the first call to each screen against a new backend version.
 export function expectShape(name: string, raw: any, ...keys: string[]) {
-  if (!import.meta.env.DEV || warned.has(name)) return
+  if (!(import.meta as any).env?.DEV || warned.has(name)) return
   const obj = raw && typeof raw === 'object' ? raw : {}
   const missing = keys.filter((k) => !(k in obj))
   if (missing.length === keys.length) {

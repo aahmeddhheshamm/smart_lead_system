@@ -46,6 +46,19 @@ page / component
 | Invitation | Email link → `/accept-invite?token=…` (or `/invite/:token`) → `GET invitations/lookup` → `POST invitations/accept`. Signed-in users accept with their current account. |
 | Email verification | `/verify-email?token=…` → `POST auth/email/verify`; banner with `POST auth/email/resend` |
 
+`auth/login` (and `auth/me`) return flat memberships, which the session is built from directly:
+
+```json
+{ "user": { "id": "…", "fullName": "…", "language": "ar", "emailVerified": true },
+  "memberships": [{ "organizationId": "…", "organizationName": "Demo Realty", "organizationStatus": "active",
+                    "roleId": "…", "roleKey": "owner", "roleName": "Organization Owner", "permissions": ["org.manage", "…"] }],
+  "tokens": { "access": "…", "refresh": "…", "accessExpiresAt": "…", "sessionId": "…", "tokenType": "Bearer" } }
+```
+
+Memberships of suspended/closed organizations are skipped. If `organizations/current` fails, sign-in continues with the membership data.
+
+Backend permission names are translated to the UI keys (the originals are kept): `org.manage` / `settings.lead_fields` → `settings.manage`, `roles.manage` → `members.manage`, `tasks.manage_all` → `tasks.manage` + `tasks.view_all`, any `tasks.*` → `tasks.manage`, `reports.view_team` → `reports.view` (`PERMISSION_ALIASES` in `backend.ts`). `npm run test:session` replays the real login response and checks the result.
+
 Permissions come from the membership's role (`role.permissions`). If the API doesn't return them, the frontend falls back to the default matrix in `src/config/permissions.ts` (the same keys the backend uses: `leads.view_all`, `leads.assign`, …).
 
 ### Feature → endpoint map
@@ -91,7 +104,7 @@ Request bodies were written from the schema's request components and from the Po
 
 **Documented in the OpenAPI (mapped exactly):** leads, lead detail, stages, sources, tags, custom fields, tasks, members, roles, invitations, automations, automation runs, notifications, imports, audit logs, plans.
 
-**Not documented (mapped defensively, verify on first use):** `auth/me`, `organizations`, `organizations/current`, `invitations/lookup`, `leads/{id}/insights`, `pipeline/board`, `tasks/summary`, `integrations`, `dashboard/summary`, all `reports/*`, `billing/subscription`, `billing/usage`, `notifications/unread-count`, `notifications/preferences`, `leads/{id}/activities` (the schema documents it as a lead), `leads/bulk`, `leads/check-duplicates`.
+**Not documented (mapped defensively, verify on first use):** `organizations`, `organizations/current`, `invitations/lookup`, `leads/{id}/insights`, `pipeline/board`, `tasks/summary`, `integrations`, `dashboard/summary`, all `reports/*`, `billing/subscription`, `billing/usage`, `notifications/unread-count`, `notifications/preferences`, `leads/{id}/activities` (the schema documents it as a lead), `leads/bulk`, `leads/check-duplicates`.
 
 In development, `expectShape()` logs a `[LeadFlow API] …` warning in the browser console the first time one of these responses doesn't contain the expected keys. Fix the matching mapper in `src/api/backend.ts`; pages need no changes.
 
