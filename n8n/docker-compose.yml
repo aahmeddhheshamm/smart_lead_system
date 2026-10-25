@@ -1,0 +1,22 @@
+# Local n8n for LeadFlow workflows, exposed to the internet through ngrok.
+#   cp n8n/.env.example n8n/.env   # then set WEBHOOK_URL to your ngrok https URL
+#   docker compose -f n8n/docker-compose.yml up -d
+services:
+  n8n:
+    image: n8nio/n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file: .env
+    environment:
+      # Public HTTPS base URL n8n registers with Telegram and other webhook providers.
+      # Without it n8n falls back to http://localhost:5678/ and Telegram rejects it:
+      # "Bad Request: bad webhook: An HTTPS URL must be provided for webhook".
+      - WEBHOOK_URL=${WEBHOOK_URL:?Set WEBHOOK_URL in n8n/.env to your https ngrok URL}
+      - N8N_PROXY_HOPS=1          # n8n sits behind ngrok; trust its X-Forwarded-* headers
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

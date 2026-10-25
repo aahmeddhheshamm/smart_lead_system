@@ -44,7 +44,7 @@ N8N_SERVICE_TOKEN=           # what n8n presents on /internal/*
 # n8n
 N8N_ENCRYPTION_KEY=          # stable forever; losing it makes stored credentials unreadable
 N8N_HOST=
-N8N_WEBHOOK_BASE_URL=
+WEBHOOK_URL=                 # public https base URL; required for Telegram and other webhook triggers
 DB_TYPE=postgresdb
 EXECUTIONS_DATA_PRUNE=true
 EXECUTIONS_DATA_MAX_AGE=336  # hours (14 days)

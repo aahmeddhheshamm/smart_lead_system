@@ -140,6 +140,7 @@ Every report states its period and how each metric is defined (conversion rate c
 
 ```text
 n8n/
+├── docker-compose.yml   # local n8n behind ngrok (see n8n/README.md)
 ├── workflows/           # exported JSON, one file per workflow id (credentials stripped)
 ├── credentials-guide/   # which credential each node needs and its minimal scopes
 └── workflow-docs/       # per-workflow notes: config, failure modes, test cases
